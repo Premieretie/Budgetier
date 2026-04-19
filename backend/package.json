@@ -5,10 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest",
-    "migrate": "node src/config/migrate.js",
-    "seed": "node src/config/seed.js"
+    "dev": "nodemon src/server.js"
   },
   "keywords": ["budget", "finance", "api", "express"],
   "author": "",
@@ -22,7 +19,7 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.9.0",
+    "pg": "^8.11.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

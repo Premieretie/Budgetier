@@ -25,36 +25,39 @@ const DEFAULT_CATEGORIES = {
 
 class Category {
   static async create({ userId, name, type, color = '#3B82F6', icon }) {
-    const [result] = await query(
+    const rows = await query(
       `INSERT INTO categories (user_id, name, type, color, icon)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
       [userId, name, type, color, icon]
     );
     
-    const [rows] = await query('SELECT * FROM categories WHERE id = ?', [result.insertId]);
     return rows[0];
   }
 
   static async findById(id) {
-    const [rows] = await query('SELECT * FROM categories WHERE id = ?', [id]);
+    const rows = await query('SELECT * FROM categories WHERE id = $1', [id]);
     return rows[0] || null;
   }
 
   static async findByUserId(userId, options = {}) {
     const { type, limit = 100 } = options;
     
-    let queryText = 'SELECT * FROM categories WHERE user_id = ?';
+    let queryText = 'SELECT * FROM categories WHERE user_id = $1';
     const values = [userId];
+    let paramIndex = 1;
 
     if (type) {
-      queryText += ' AND type = ?';
+      paramIndex++;
+      queryText += ` AND type = $${paramIndex}`;
       values.push(type);
     }
 
-    queryText += ' ORDER BY name ASC LIMIT ?';
+    paramIndex++;
+    queryText += ` ORDER BY name ASC LIMIT $${paramIndex}`;
     values.push(parseInt(limit));
 
-    const [rows] = await query(queryText, values);
+    const rows = await query(queryText, values);
     return rows;
   }
 
@@ -62,10 +65,12 @@ class Category {
     const allowedFields = ['name', 'color', 'icon'];
     const fields = [];
     const values = [];
+    let paramIndex = 0;
 
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.includes(key)) {
-        fields.push(`${key} = ?`);
+        paramIndex++;
+        fields.push(`${key} = $${paramIndex}`);
         values.push(value);
       }
     }
@@ -74,23 +79,26 @@ class Category {
       throw new Error('No valid fields to update');
     }
 
-    values.push(id, userId);
+    paramIndex++;
+    values.push(id);
+    paramIndex++;
+    values.push(userId);
     
     await query(
-      `UPDATE categories SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+      `UPDATE categories SET ${fields.join(', ')} WHERE id = $${paramIndex - 1} AND user_id = $${paramIndex}`,
       values
     );
     
-    const [rows] = await query('SELECT * FROM categories WHERE id = ?', [id]);
+    const rows = await query('SELECT * FROM categories WHERE id = $1', [id]);
     return rows[0] || null;
   }
 
   static async delete(id, userId) {
-    const [result] = await query(
-      'DELETE FROM categories WHERE id = ? AND user_id = ?',
+    const result = await query(
+      'DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]
     );
-    return result.affectedRows > 0 ? { id } : null;
+    return result.length > 0 ? { id } : null;
   }
 
   static async createDefaultCategories(userId) {
@@ -120,23 +128,26 @@ class Category {
       FROM categories c
       LEFT JOIN expenses e ON c.name = e.category 
         AND e.user_id = c.user_id
-      WHERE c.user_id = ? AND c.type = 'expense'
+      WHERE c.user_id = $1 AND c.type = 'expense'
     `;
     const values = [userId];
+    let paramIndex = 1;
 
     if (startDate) {
-      queryText += ' AND e.date >= ?';
+      paramIndex++;
+      queryText += ` AND e.date >= $${paramIndex}`;
       values.push(startDate);
     }
 
     if (endDate) {
-      queryText += ' AND e.date <= ?';
+      paramIndex++;
+      queryText += ` AND e.date <= $${paramIndex}`;
       values.push(endDate);
     }
 
     queryText += ' GROUP BY c.id ORDER BY total DESC';
 
-    const [rows] = await query(queryText, values);
+    const rows = await query(queryText, values);
     return rows;
   }
 }

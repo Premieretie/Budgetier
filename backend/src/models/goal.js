@@ -2,36 +2,43 @@ const { query } = require('../config/database');
 
 class Goal {
   static async create({ userId, name, type, targetAmount, currentAmount = 0, deadline, description }) {
-    const [result] = await query(
+    const rows = await query(
       `INSERT INTO goals (user_id, name, type, target_amount, current_amount, deadline, description)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
       [userId, name, type, targetAmount, currentAmount, deadline, description]
     );
     
-    const [rows] = await query('SELECT * FROM goals WHERE id = ?', [result.insertId]);
     return rows[0];
   }
 
   static async findById(id) {
-    const [rows] = await query('SELECT * FROM goals WHERE id = ?', [id]);
+    const rows = await query('SELECT * FROM goals WHERE id = $1', [id]);
     return rows[0] || null;
   }
 
   static async findByUserId(userId, options = {}) {
     const { completed, limit = 100, offset = 0 } = options;
     
-    let queryText = 'SELECT * FROM goals WHERE user_id = ?';
+    let queryText = 'SELECT * FROM goals WHERE user_id = $1';
     const values = [userId];
+    let paramIndex = 1;
 
     if (completed !== undefined) {
-      queryText += ' AND completed = ?';
+      paramIndex++;
+      queryText += ` AND completed = $${paramIndex}`;
       values.push(completed);
     }
 
-    queryText += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    values.push(parseInt(limit), parseInt(offset));
+    paramIndex++;
+    queryText += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
+    values.push(parseInt(limit));
+    
+    paramIndex++;
+    queryText += ` OFFSET $${paramIndex}`;
+    values.push(parseInt(offset));
 
-    const [rows] = await query(queryText, values);
+    const rows = await query(queryText, values);
     return rows;
   }
 
@@ -39,10 +46,12 @@ class Goal {
     const allowedFields = ['name', 'type', 'target_amount', 'current_amount', 'deadline', 'description', 'completed'];
     const fields = [];
     const values = [];
+    let paramIndex = 0;
 
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.includes(key)) {
-        fields.push(`${key} = ?`);
+        paramIndex++;
+        fields.push(`${key} = $${paramIndex}`);
         values.push(value);
       }
     }
@@ -51,23 +60,26 @@ class Goal {
       throw new Error('No valid fields to update');
     }
 
-    values.push(id, userId);
+    paramIndex++;
+    values.push(id);
+    paramIndex++;
+    values.push(userId);
     
     await query(
-      `UPDATE goals SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+      `UPDATE goals SET ${fields.join(', ')} WHERE id = $${paramIndex - 1} AND user_id = $${paramIndex}`,
       values
     );
     
-    const [rows] = await query('SELECT * FROM goals WHERE id = ?', [id]);
+    const rows = await query('SELECT * FROM goals WHERE id = $1', [id]);
     return rows[0] || null;
   }
 
   static async delete(id, userId) {
-    const [result] = await query(
-      'DELETE FROM goals WHERE id = ? AND user_id = ?',
+    const result = await query(
+      'DELETE FROM goals WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]
     );
-    return result.affectedRows > 0 ? { id } : null;
+    return result.length > 0 ? { id } : null;
   }
 
   static async addProgress(id, userId, amount) {
@@ -75,8 +87,8 @@ class Goal {
     
     return transaction(async (client) => {
       // First get current values (within transaction for locking)
-      const [goalRows] = await client.execute(
-        'SELECT current_amount, target_amount FROM goals WHERE id = ? AND user_id = ? FOR UPDATE',
+      const goalRows = await client.query(
+        'SELECT current_amount, target_amount FROM goals WHERE id = $1 AND user_id = $2 FOR UPDATE',
         [id, userId]
       );
       
@@ -85,25 +97,25 @@ class Goal {
       const newAmount = parseFloat(goalRows[0].current_amount) + parseFloat(amount);
       const completed = newAmount >= parseFloat(goalRows[0].target_amount);
       
-      await client.execute(
-        `UPDATE goals SET current_amount = ?, completed = ?, completed_at = ? WHERE id = ? AND user_id = ?`,
+      await client.query(
+        `UPDATE goals SET current_amount = $1, completed = $2, completed_at = $3 WHERE id = $4 AND user_id = $5`,
         [newAmount, completed, completed ? new Date() : null, id, userId]
       );
       
-      const [rows] = await client.execute('SELECT * FROM goals WHERE id = ?', [id]);
+      const rows = await client.query('SELECT * FROM goals WHERE id = $1', [id]);
       return rows[0] || null;
     });
   }
 
   static async getStats(userId) {
-    const [rows] = await query(
+    const rows = await query(
       `SELECT 
         COUNT(*) as total_goals,
         SUM(CASE WHEN completed = true THEN 1 ELSE 0 END) as completed_goals,
         COALESCE(SUM(CASE WHEN type = 'savings' AND completed = false THEN target_amount - current_amount END), 0) as remaining_savings,
         COALESCE(SUM(CASE WHEN type = 'debt' AND completed = false THEN target_amount - current_amount END), 0) as remaining_debt
        FROM goals 
-       WHERE user_id = ?`,
+       WHERE user_id = $1`,
       [userId]
     );
     
@@ -111,13 +123,13 @@ class Goal {
   }
 
   static async getUpcomingDeadlines(userId, days = 30) {
-    const [rows] = await query(
+    const rows = await query(
       `SELECT *
        FROM goals 
-       WHERE user_id = ? 
+       WHERE user_id = $1 
          AND completed = false 
          AND deadline IS NOT NULL
-         AND deadline <= DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)
+         AND deadline <= CURRENT_DATE + INTERVAL '$2 days'
        ORDER BY deadline ASC`,
       [userId, parseInt(days)]
     );

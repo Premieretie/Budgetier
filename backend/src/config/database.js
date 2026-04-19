@@ -1,37 +1,25 @@
-const mysql = require('mysql2/promise');
-require('dotenv').config();
+const { Pool } = require('pg');
 
-const pool = mysql.createPool({
-  host: process.env.MYSQL_HOST || 'localhost',
-  user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || '',
-  database: process.env.MYSQL_DATABASE || 'budgeter',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+// Use DATABASE_URL from environment (Render provides this)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+// Handle connection errors
+pool.on('error', (err) => {
+  console.error('Unexpected database error:', err);
 });
 
 // Initialize database - creates tables if they don't exist
 async function initDb() {
-  // Create a separate connection to check/create database first
-  const setupConnection = await mysql.createConnection({
-    host: process.env.MYSQL_HOST || 'localhost',
-    user: process.env.MYSQL_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || '',
-  });
+  const client = await pool.connect();
 
   try {
-    await setupConnection.query(
-      `CREATE DATABASE IF NOT EXISTS ${process.env.MYSQL_DATABASE || 'budgeter'}`
-    );
-    await setupConnection.end();
-
-    const connection = await pool.getConnection();
-
     // Users Table
-    await connection.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         first_name VARCHAR(100),
@@ -40,15 +28,15 @@ async function initDb() {
         privacy_consent BOOLEAN DEFAULT FALSE,
         consent_date TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP
       )
     `);
 
     // Income Table
-    await connection.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS income (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         amount DECIMAL(12, 2) NOT NULL,
         source VARCHAR(100),
@@ -56,31 +44,31 @@ async function initDb() {
         description TEXT,
         recurring BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
     // Categories Table
-    await connection.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS categories (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT,
         name VARCHAR(100) NOT NULL,
-        type ENUM('income', 'expense') NOT NULL,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
         color VARCHAR(7) DEFAULT '#3B82F6',
         icon VARCHAR(50) DEFAULT 'briefcase',
         is_default BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_category (user_id, name, type)
+        CONSTRAINT unique_category UNIQUE (user_id, name, type)
       )
     `);
 
     // Expenses Table
-    await connection.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS expenses (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         amount DECIMAL(12, 2) NOT NULL,
         category VARCHAR(100),
@@ -89,18 +77,18 @@ async function initDb() {
         recurring BOOLEAN DEFAULT FALSE,
         recurring_frequency VARCHAR(20) DEFAULT 'monthly',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
     // Goals Table
-    await connection.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS goals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         name VARCHAR(255) NOT NULL,
-        type ENUM('savings', 'debt') NOT NULL,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('savings', 'debt')),
         target_amount DECIMAL(12, 2) NOT NULL,
         current_amount DECIMAL(12, 2) DEFAULT 0,
         deadline DATE,
@@ -108,67 +96,46 @@ async function initDb() {
         completed BOOLEAN DEFAULT FALSE,
         completed_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
     // Budgets Table
-    await connection.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS budgets (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         name VARCHAR(255) NOT NULL,
         amount DECIMAL(12, 2) NOT NULL,
-        period ENUM('weekly', 'monthly', 'yearly') NOT NULL,
+        period VARCHAR(20) NOT NULL CHECK (period IN ('weekly', 'monthly', 'yearly')),
         category_id INT,
         start_date DATE NOT NULL,
         end_date DATE,
         alert_threshold INT DEFAULT 80,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE SET NULL
       )
     `);
 
     // Notifications Table
-    await connection.query(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         type VARCHAR(50) NOT NULL,
         title VARCHAR(255) NOT NULL,
         message TEXT,
         is_read BOOLEAN DEFAULT FALSE,
-        data JSON,
+        data JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
-    // Insert default categories for new users
-    // Fix icon column size if table exists with old schema
-    try {
-      await connection.query(`ALTER TABLE categories MODIFY icon VARCHAR(50) DEFAULT 'briefcase'`);
-    } catch (e) {
-      // Ignore if column already correct size or table doesn't exist
-    }
-
-    // Add consent_given column to users if missing
-    try {
-      await connection.query(`ALTER TABLE users ADD COLUMN consent_given BOOLEAN DEFAULT FALSE`);
-    } catch (e) {
-      // Ignore if column already exists
-    }
-
-    // Add recurring_frequency column to expenses if missing
-    try {
-      await connection.query(`ALTER TABLE expenses ADD COLUMN recurring_frequency VARCHAR(20) DEFAULT 'monthly'`);
-    } catch (e) {
-      // Ignore if column already exists
-    }
-
+    // Insert default categories
     const defaultCategories = [
       ['Food & Dining', 'expense', '#EF4444', '🍔'],
       ['Transportation', 'expense', '#3B82F6', '🚗'],
@@ -185,41 +152,44 @@ async function initDb() {
     ];
 
     for (const cat of defaultCategories) {
-      try {
-        await connection.query(
-          `INSERT INTO categories (name, type, color, icon, is_default) VALUES (?, ?, ?, ?, TRUE)
-           ON DUPLICATE KEY UPDATE name=name`,
-          cat
-        );
-      } catch (e) {
-        // Ignore duplicate errors
-      }
+      await client.query(
+        `INSERT INTO categories (name, type, color, icon, is_default)
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (user_id, name, type) DO NOTHING`,
+        cat
+      );
     }
 
     console.log('Database initialized successfully');
-    connection.release();
   } catch (err) {
     console.error('Error initializing database:', err);
+  } finally {
+    client.release();
   }
 }
 
 // Initialize on require
 initDb();
 
-const query = (text, params) => pool.execute(text, params);
+// Query helper - PostgreSQL uses $1, $2 instead of ?
+const query = async (text, params) => {
+  const result = await pool.query(text, params);
+  return result.rows;
+};
 
+// Transaction helper
 const transaction = async (callback) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connection.beginTransaction();
-    const result = await callback(connection);
-    await connection.commit();
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
     return result;
   } catch (error) {
-    await connection.rollback();
+    await client.query('ROLLBACK');
     throw error;
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
