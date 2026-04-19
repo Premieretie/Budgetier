@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Budgetier - Redirecting...</title>
+    <script>
+      // GitHub Pages SPA redirect
+      // Store the attempted URL and redirect to root
+      const segment = 1; // Adjust if deploying to a subdirectory
+      const url = window.location.pathname;
+      const redirectUrl = url.slice(segment ? url.indexOf('/', segment) : 0) || '/';
+      
+      sessionStorage.setItem('spa-redirect', redirectUrl + window.location.search + window.location.hash);
+      window.location.href = '/'; // Redirect to root
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to Budgetier...</p>
+  </body>
+</html>
