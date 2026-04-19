@@ -11,7 +11,6 @@ import {
   ShieldCheckIcon,
   ArrowLeftOnRectangleIcon,
   XMarkIcon,
-  SkullIcon,
   MapIcon,
   FireIcon,
 } from '@heroicons/react/24/outline';
@@ -44,7 +43,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center shadow-lg shadow-gold-500/30">
-              <SkullIcon className="h-5 w-5 text-slate-900" />
+              <span className="text-lg">💀</span>
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-gold-600 to-gold-800 bg-clip-text text-transparent">Budgetier</span>
           </div>
@@ -130,7 +129,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center shadow-lg shadow-gold-500/30">
-              <SkullIcon className="h-5 w-5 text-slate-900" />
+              <span className="text-lg">💀</span>
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-gold-600 to-gold-800 bg-clip-text text-transparent">Budgetier</span>
           </div>
