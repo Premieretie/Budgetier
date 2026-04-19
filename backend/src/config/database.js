@@ -264,6 +264,7 @@ async function initDb() {
         reward_gold INT DEFAULT 10,
         reward_xp INT DEFAULT 5,
         completed BOOLEAN DEFAULT FALSE,
+        reward_claimed BOOLEAN DEFAULT FALSE,
         date DATE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE

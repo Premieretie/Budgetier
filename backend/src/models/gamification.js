@@ -489,8 +489,8 @@ class Gamification {
     
     const rows = await query(
       `UPDATE daily_challenges 
-       SET current_amount = current_amount + $3,
-           completed = CASE WHEN current_amount + $3 >= target_amount THEN TRUE ELSE completed END
+       SET current_amount = current_amount + $4,
+           completed = CASE WHEN current_amount + $4 >= target_amount THEN TRUE ELSE completed END
        WHERE user_id = $1 AND challenge_type = $2 AND date = $3 AND completed = FALSE
        RETURNING *`,
       [userId, challengeType, today, amount]
