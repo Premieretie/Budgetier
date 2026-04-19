@@ -162,10 +162,12 @@ router.patch('/:id', goalValidation, async (req, res) => {
 
 // Add progress to goal
 router.post('/:id/progress', async (req, res) => {
+  console.log('📈 Progress request:', { goalId: req.params.id, amount: req.body?.amount, userId: req.user?.id });
   try {
     const { amount } = req.body;
 
     if (!amount || isNaN(amount) || amount <= 0) {
+      console.log('❌ Invalid amount:', amount);
       return res.status(400).json({
         success: false,
         message: 'Valid positive amount is required.'
@@ -173,10 +175,13 @@ router.post('/:id/progress', async (req, res) => {
     }
 
     const previousGoal = await Goal.findById(req.params.id);
+    console.log('🔍 Previous goal:', previousGoal ? `Found (current: ${previousGoal.current_amount})` : 'NOT FOUND');
     
     const goal = await Goal.addProgress(req.params.id, req.user.id, amount);
+    console.log('✅ Progress added:', goal ? `New amount: ${goal.current_amount}` : 'FAILED');
 
     if (!goal) {
+      console.log('❌ Goal.addProgress returned null');
       return res.status(404).json({
         success: false,
         message: 'Goal not found.'

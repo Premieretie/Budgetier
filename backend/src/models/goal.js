@@ -87,23 +87,23 @@ class Goal {
     
     return transaction(async (client) => {
       // First get current values (within transaction for locking)
-      const goalRows = await client.query(
+      const goalResult = await client.query(
         'SELECT current_amount, target_amount FROM goals WHERE id = $1 AND user_id = $2 FOR UPDATE',
         [id, userId]
       );
       
-      if (!goalRows[0]) return null;
+      if (!goalResult.rows[0]) return null;
       
-      const newAmount = parseFloat(goalRows[0].current_amount) + parseFloat(amount);
-      const completed = newAmount >= parseFloat(goalRows[0].target_amount);
+      const newAmount = parseFloat(goalResult.rows[0].current_amount) + parseFloat(amount);
+      const completed = newAmount >= parseFloat(goalResult.rows[0].target_amount);
       
       await client.query(
         `UPDATE goals SET current_amount = $1, completed = $2, completed_at = $3 WHERE id = $4 AND user_id = $5`,
         [newAmount, completed, completed ? new Date() : null, id, userId]
       );
       
-      const rows = await client.query('SELECT * FROM goals WHERE id = $1', [id]);
-      return rows[0] || null;
+      const result = await client.query('SELECT * FROM goals WHERE id = $1', [id]);
+      return result.rows[0] || null;
     });
   }
 
