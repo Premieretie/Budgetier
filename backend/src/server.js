@@ -1,12 +1,12 @@
-const express = require('express');
-const cors = require('cors');
 const path = require('path');
 
-// Load dotenv only if not in production (Render sets env vars directly)
+// CRITICAL: Load dotenv FIRST before any other requires that use env vars
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 }
 
+const express = require('express');
+const cors = require('cors');
 const { securityMiddleware, xssPrevention, preventNoSQLInjection } = require('./middleware/security');
 
 // Route imports
