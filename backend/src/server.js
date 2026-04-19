@@ -19,6 +19,7 @@ const budgetRoutes = require('./routes/budgets');
 const categoryRoutes = require('./routes/categories');
 const notificationRoutes = require('./routes/notifications');
 const dashboardRoutes = require('./routes/dashboard');
+const gamificationRoutes = require('./routes/gamification');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +79,7 @@ app.use('/api/budgets', budgetRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/gamification', gamificationRoutes);
 
 // Root route - API info
 app.get('/', (req, res) => {

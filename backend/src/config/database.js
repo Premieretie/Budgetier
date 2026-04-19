@@ -193,6 +193,98 @@ async function initDb() {
       )
     `);
 
+    // ============================================
+    // GAMIFICATION TABLES
+    // ============================================
+
+    // User Stats Table - XP, Level, Gold, Ship Health
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_stats (
+        id SERIAL PRIMARY KEY,
+        user_id INT UNIQUE NOT NULL,
+        xp INT DEFAULT 0,
+        level INT DEFAULT 1,
+        gold INT DEFAULT 100,
+        ship_health INT DEFAULT 100,
+        current_streak INT DEFAULT 0,
+        longest_streak INT DEFAULT 0,
+        last_activity_date DATE,
+        treasure_chest_amount DECIMAL(12, 2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Rewards/Loot Table - Track what user has unlocked
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_rewards (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL,
+        reward_type VARCHAR(50) NOT NULL,
+        reward_name VARCHAR(255) NOT NULL,
+        description TEXT,
+        icon VARCHAR(50),
+        rarity VARCHAR(20) DEFAULT 'common',
+        is_used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Quick Expense Buttons - User customizable one-tap buttons
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS quick_expense_buttons (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        category VARCHAR(100),
+        icon VARCHAR(50) DEFAULT '💰',
+        color VARCHAR(7) DEFAULT '#D4AF37',
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        usage_count INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Daily Challenges Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS daily_challenges (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL,
+        challenge_type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        target_amount DECIMAL(10, 2),
+        current_amount DECIMAL(10, 2) DEFAULT 0,
+        reward_gold INT DEFAULT 10,
+        reward_xp INT DEFAULT 5,
+        completed BOOLEAN DEFAULT FALSE,
+        date DATE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Achievement Log Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS achievement_log (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL,
+        achievement_type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        reward_gold INT DEFAULT 0,
+        reward_xp INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
     // Insert default categories
     const defaultCategories = [
       ['Food & Dining', 'expense', '#EF4444', '🍔'],

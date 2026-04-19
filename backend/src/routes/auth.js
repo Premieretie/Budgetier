@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/user');
 const { Category } = require('../models/category');
 const Notification = require('../models/notification');
+const Gamification = require('../models/gamification');
 const { generateToken } = require('../middleware/auth');
 const { registerValidation, loginValidation } = require('../middleware/validation');
 const { authenticate } = require('../middleware/auth');
@@ -35,12 +36,15 @@ router.post('/register', registerValidation, async (req, res) => {
     // Create default categories
     await Category.createDefaultCategories(user.id);
 
+    // Initialize gamification stats
+    await Gamification.initializeUserStats(user.id);
+
     // Create welcome notification
     await Notification.create({
       userId: user.id,
       type: Notification.TYPES.WELCOME,
-      title: 'Welcome to Budgeter!',
-      message: 'Start tracking your finances and reach your goals.',
+      title: '🏴‍☠️ Welcome Aboard, Captain!',
+      message: 'Yer ship be ready! Start tracking yer treasure and complete quests to become a legendary pirate!',
     });
 
     // Generate token

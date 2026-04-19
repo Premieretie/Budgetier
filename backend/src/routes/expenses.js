@@ -3,6 +3,7 @@ const router = express.Router();
 const Expense = require('../models/expense');
 const Budget = require('../models/budget');
 const Notification = require('../models/notification');
+const Gamification = require('../models/gamification');
 const { authenticate, requireConsent } = require('../middleware/auth');
 const { expenseValidation, dateRangeValidation, uuidParamValidation } = require('../middleware/validation');
 
@@ -81,6 +82,19 @@ router.post('/', expenseValidation, async (req, res) => {
       recurringFrequency: recurringFrequency || 'monthly',
     });
 
+    // Track gamification (streaks, XP, loot drops)
+    const gamification = await Gamification.trackExpense(req.user.id, amount, category);
+
+    // Update ship health based on spending
+    const monthlyTotal = await Expense.getTotalByUserId(req.user.id, {
+      startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+      endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+    });
+    const budgets = await Budget.findByUserId(req.user.id);
+    const totalBudget = budgets.reduce((sum, b) => sum + parseFloat(b.amount), 0);
+    const spendingRatio = totalBudget > 0 ? monthlyTotal / totalBudget : 0;
+    await Gamification.updateShipHealth(req.user.id, spendingRatio);
+
     // Check budget alerts
     const budgetAlerts = await Budget.checkOverspending(req.user.id);
     
@@ -106,8 +120,13 @@ router.post('/', expenseValidation, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Expense created successfully.',
-      data: { expense }
+      message: gamification.loot 
+        ? `💰 Expense logged! Found ${gamification.loot.name}! (+${gamification.loot.gold} gold, +${gamification.xp} XP)`
+        : `💰 Expense logged! (+${gamification.xp} XP)`,
+      data: { 
+        expense,
+        gamification,
+      }
     });
   } catch (error) {
     console.error('Create expense error:', error);
