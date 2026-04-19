@@ -123,15 +123,16 @@ class Goal {
   }
 
   static async getUpcomingDeadlines(userId, days = 30) {
+    const daysInt = parseInt(days);
     const rows = await query(
       `SELECT *
        FROM goals 
        WHERE user_id = $1 
          AND completed = false 
          AND deadline IS NOT NULL
-         AND deadline <= CURRENT_DATE + INTERVAL '$2 days'
+         AND deadline <= CURRENT_DATE + INTERVAL '${daysInt} days'
        ORDER BY deadline ASC`,
-      [userId, parseInt(days)]
+      [userId]
     );
     
     return rows;
