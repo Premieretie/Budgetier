@@ -23,7 +23,10 @@ router.get('/summary', async (req, res) => {
     const endOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0];
     const startOfYear = new Date(currentYear, 0, 1).toISOString().split('T')[0];
 
+    console.log('📊 Dashboard summary request for user:', req.user.id);
+
     // Get totals
+    console.log('  → Fetching income/expense totals...');
     const [totalIncome, totalExpenses, monthlyIncome, monthlyExpenses] = await Promise.all([
       Income.getTotalByUserId(req.user.id),
       Expense.getTotalByUserId(req.user.id),
@@ -35,9 +38,11 @@ router.get('/summary', async (req, res) => {
     const monthlySavings = monthlyIncome - monthlyExpenses;
 
     // Get goal stats
+    console.log('  → Fetching goal stats...');
     const goalStats = await Goal.getStats(req.user.id);
 
     // Get recent data
+    console.log('  → Fetching recent data...');
     const [recentExpenses, upcomingGoals, budgetAlerts, unreadNotifications] = await Promise.all([
       Expense.getRecentExpenses(req.user.id, 5),
       Goal.getUpcomingDeadlines(req.user.id, 30),
@@ -46,16 +51,21 @@ router.get('/summary', async (req, res) => {
     ]);
 
     // Get monthly breakdowns
+    console.log('  → Fetching monthly breakdowns...');
     const [incomeByMonth, expensesByMonth] = await Promise.all([
       Income.getMonthlyBreakdown(req.user.id, currentYear),
       Expense.getMonthlyBreakdown(req.user.id, currentYear),
     ]);
 
     // Get category breakdown
+    console.log('  → Fetching category breakdown...');
     const categoryBreakdown = await Expense.getCategoryBreakdown(req.user.id, startOfMonth, endOfMonth);
 
     // Get income source breakdown
+    console.log('  → Fetching source breakdown...');
     const sourceBreakdown = await Income.getIncomeBySource(req.user.id, startOfMonth, endOfMonth);
+
+    console.log('✅ Dashboard data fetched successfully');
 
     res.json({
       success: true,
@@ -91,10 +101,12 @@ router.get('/summary', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get dashboard summary error:', error);
+    console.error('❌ Get dashboard summary error:', error);
+    console.error('  Stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve dashboard summary.'
+      message: 'Failed to retrieve dashboard summary.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
