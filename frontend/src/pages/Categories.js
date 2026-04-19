@@ -249,13 +249,14 @@ const Categories = () => {
                   <div className="flex items-start justify-between">
                     {/* Icon in treasure style */}
                     <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-inner border-4 border-amber-600"
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-inner border-4 border-amber-600 flex-shrink-0"
                       style={{
                         background: `radial-gradient(circle at 30% 30%, ${category.color}60, ${category.color})`,
                         boxShadow: `inset 0 2px 8px rgba(0,0,0,0.3), 0 4px 12px ${category.color}60`,
                       }}
+                      title={category.name}
                     >
-                      {category.icon}
+                      {category.icon || '📦'}
                     </div>
 
                     {/* Action buttons - pirate style */}
@@ -278,8 +279,12 @@ const Categories = () => {
                   </div>
 
                   {/* Cargo info with pirate styling */}
-                  <div className="mt-4">
-                    <h3 className="font-black text-slate-900 text-xl tracking-wide" style={{ fontFamily: 'serif' }}>
+                  <div className="mt-4 min-w-0 flex-1">
+                    <h3 
+                      className="font-black text-slate-900 text-xl tracking-wide truncate" 
+                      style={{ fontFamily: 'serif' }}
+                      title={category.name}
+                    >
                       {category.name}
                     </h3>
                     <p className="text-sm font-bold uppercase tracking-wider mt-2" style={{ color: category.color }}>
