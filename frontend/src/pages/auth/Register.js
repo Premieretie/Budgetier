@@ -92,13 +92,14 @@ const Register = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Create your account</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Join the Crew!</h2>
+      <p className="text-slate-500 text-sm mb-6">Swear allegiance to the Pirate Code and start yer treasure tracking</p>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="firstName" className="label">
-              First name <span className="text-red-500">*</span>
+              Pirate Name <span className="text-crimson-500">*</span>
             </label>
             <input
               id="firstName"
@@ -108,12 +109,12 @@ const Register = () => {
               value={formData.firstName}
               onChange={handleChange}
               className="input"
-              placeholder="John"
+              placeholder="Blackbeard"
             />
           </div>
           <div>
             <label htmlFor="lastName" className="label">
-              Last name <span className="text-red-500">*</span>
+              Family Name <span className="text-crimson-500">*</span>
             </label>
             <input
               id="lastName"
@@ -123,14 +124,14 @@ const Register = () => {
               value={formData.lastName}
               onChange={handleChange}
               className="input"
-              placeholder="Doe"
+              placeholder="the Fearsome"
             />
           </div>
         </div>
 
         <div>
           <label htmlFor="email" className="label">
-            Email address <span className="text-red-500">*</span>
+            Parrot Address (Email) <span className="text-crimson-500">*</span>
           </label>
           <input
             id="email"
@@ -141,13 +142,13 @@ const Register = () => {
             value={formData.email}
             onChange={handleChange}
             className="input"
-            placeholder="john@example.com"
+            placeholder="captain@pirate.sea"
           />
         </div>
 
         <div>
           <label htmlFor="password" className="label">
-            Password <span className="text-red-500">*</span>
+            Secret Code (Password) <span className="text-crimson-500">*</span>
           </label>
           <div className="relative">
             <input
@@ -159,12 +160,12 @@ const Register = () => {
               value={formData.password}
               onChange={handleChange}
               className="input pr-10"
-              placeholder="Create a password"
+              placeholder="Make it harder than Davy Jones' locker..."
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-gold-600"
             >
               {showPassword ? (
                 <EyeSlashIcon className="h-5 w-5" />
@@ -186,7 +187,7 @@ const Register = () => {
 
         <div>
           <label htmlFor="confirmPassword" className="label">
-            Confirm password <span className="text-red-500">*</span>
+            Confirm Secret Code <span className="text-crimson-500">*</span>
           </label>
           <input
             id="confirmPassword"
@@ -197,7 +198,7 @@ const Register = () => {
             value={formData.confirmPassword}
             onChange={handleChange}
             className="input"
-            placeholder="Confirm your password"
+            placeholder="X marks the spot..."
           />
           {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
             <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
@@ -242,14 +243,14 @@ const Register = () => {
           fullWidth
           isLoading={isLoading}
         >
-          Create account
+          {isLoading ? 'Hoisting the Jolly Roger...' : 'Take the Oath & Join!'}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
-        Already have an account?{' '}
-        <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
-          Sign in
+      <p className="mt-6 text-center text-sm text-slate-600">
+        Already part of the crew?{' '}
+        <Link to="/login" className="font-medium text-gold-600 hover:text-gold-700 underline decoration-gold-400">
+          Board the Ship
         </Link>
       </p>
 

@@ -7,6 +7,7 @@ import {
   TrophyIcon,
   ExclamationTriangleIcon,
   ArrowRightIcon,
+  DocumentTextIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import StatCard from '../components/ui/StatCard';
@@ -212,7 +213,7 @@ const Dashboard = () => {
           <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-white to-gray-50">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-red-100 rounded-lg">
-                <BanknotesIcon className="h-5 w-5 text-red-600" />
+                <DocumentTextIcon className="h-5 w-5 text-red-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Recent Expenses</h3>
             </div>
@@ -291,7 +292,7 @@ const Dashboard = () => {
             ) : (
               <div className="p-8 text-center">
                 <div className="w-16 h-16 mx-auto bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-3">
-                  <BanknotesIcon className="h-8 w-8 text-gray-400" />
+                  <DocumentTextIcon className="h-8 w-8 text-gray-400" />
                 </div>
                 <p className="text-gray-500 font-medium">No recent expenses</p>
                 <p className="text-sm text-gray-400 mt-1">

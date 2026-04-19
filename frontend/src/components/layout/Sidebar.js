@@ -10,23 +10,25 @@ import {
   Cog6ToothIcon,
   ShieldCheckIcon,
   ArrowLeftOnRectangleIcon,
-  WalletIcon,
   XMarkIcon,
+  SkullIcon,
+  MapIcon,
+  FireIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../hooks/useAuthStore';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Income', href: '/income', icon: BanknotesIcon },
-  { name: 'Expenses', href: '/expenses', icon: ShoppingCartIcon },
-  { name: 'Goals', href: '/goals', icon: TrophyIcon },
-  { name: 'Budgets', href: '/budgets', icon: ChartPieIcon },
-  { name: 'Categories', href: '/categories', icon: TagIcon },
+  { name: 'Captain\'s Log', href: '/dashboard', icon: MapIcon },
+  { name: 'Treasure In', href: '/income', icon: BanknotesIcon },
+  { name: 'Loot Spent', href: '/expenses', icon: FireIcon },
+  { name: 'Quests', href: '/goals', icon: TrophyIcon },
+  { name: 'Treasure Maps', href: '/budgets', icon: ChartPieIcon },
+  { name: 'Cargo Types', href: '/categories', icon: TagIcon },
 ];
 
 const secondaryNavigation = [
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
-  { name: 'Privacy Policy', href: '/privacy-policy', icon: ShieldCheckIcon },
+  { name: 'Ship Settings', href: '/settings', icon: Cog6ToothIcon },
+  { name: 'Pirate Code', href: '/privacy-policy', icon: ShieldCheckIcon },
 ];
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -41,10 +43,10 @@ const Sidebar = ({ isOpen, onClose }) => {
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
-              <WalletIcon className="h-5 w-5 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center shadow-lg shadow-gold-500/30">
+              <SkullIcon className="h-5 w-5 text-slate-900" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Budgeter</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-gold-600 to-gold-800 bg-clip-text text-transparent">Budgetier</span>
           </div>
           
           <nav className="flex flex-1 flex-col">
@@ -58,16 +60,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                         className={({ isActive }) =>
                           `group flex gap-x-3 rounded-lg p-2 text-sm font-semibold leading-6 ${
                             isActive
-                              ? 'bg-primary-50 text-primary-600'
-                              : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                              ? 'bg-gold-100 text-gold-800 border-l-4 border-gold-600'
+                              : 'text-slate-600 hover:bg-parchment-100 hover:text-slate-900'
                           }`
                         }
                       >
                         <item.icon
                           className={`h-6 w-6 shrink-0 ${
                             isActive(item.href)
-                              ? 'text-primary-600'
-                              : 'text-gray-400 group-hover:text-gray-600'
+                              ? 'text-gold-700'
+                              : 'text-slate-400 group-hover:text-gold-600'
                           }`}
                           aria-hidden="true"
                         />
@@ -103,13 +105,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <li>
                     <button
                       onClick={logout}
-                      className="group flex w-full gap-x-3 rounded-lg p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      className="group flex w-full gap-x-3 rounded-lg p-2 text-sm font-semibold leading-6 text-slate-700 hover:bg-crimson-50 hover:text-crimson-700"
                     >
                       <ArrowLeftOnRectangleIcon
-                        className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-gray-600"
+                        className="h-6 w-6 shrink-0 text-slate-400 group-hover:text-crimson-600"
                         aria-hidden="true"
                       />
-                      Sign out
+                      Abandon Ship
                     </button>
                   </li>
                 </ul>
@@ -127,14 +129,14 @@ const Sidebar = ({ isOpen, onClose }) => {
       >
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
-              <WalletIcon className="h-5 w-5 text-white" />
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center shadow-lg shadow-gold-500/30">
+              <SkullIcon className="h-5 w-5 text-slate-900" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Budgeter</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-gold-600 to-gold-800 bg-clip-text text-transparent">Budgetier</span>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+            className="rounded-lg p-2 text-slate-400 hover:bg-parchment-100 hover:text-slate-600"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
@@ -150,16 +152,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                   className={({ isActive }) =>
                     `group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 ${
                       isActive
-                        ? 'bg-primary-50 text-primary-600'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'bg-gold-100 text-gold-800 border-l-4 border-gold-600'
+                        : 'text-slate-600 hover:bg-parchment-100 hover:text-slate-900'
                     }`
                   }
                 >
                   <item.icon
                     className={`h-6 w-6 shrink-0 ${
                       isActive(item.href)
-                        ? 'text-primary-600'
-                        : 'text-gray-400 group-hover:text-gray-600'
+                        ? 'text-gold-700'
+                        : 'text-slate-400 group-hover:text-gold-600'
                     }`}
                   />
                   {item.name}
@@ -178,12 +180,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                     className={({ isActive }) =>
                       `group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 ${
                         isActive
-                          ? 'bg-gray-50 text-gray-900'
-                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                          ? 'bg-parchment-100 text-slate-800'
+                          : 'text-slate-600 hover:bg-parchment-100 hover:text-slate-900'
                       }`
                     }
                   >
-                    <item.icon className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-gray-600" />
+                    <item.icon className="h-6 w-6 shrink-0 text-slate-400 group-hover:text-gold-600" />
                     {item.name}
                   </NavLink>
                 </li>
@@ -194,10 +196,10 @@ const Sidebar = ({ isOpen, onClose }) => {
                     onClose();
                     logout();
                   }}
-                  className="group flex w-full gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  className="group flex w-full gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 text-slate-700 hover:bg-crimson-50 hover:text-crimson-700"
                 >
-                  <ArrowLeftOnRectangleIcon className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-gray-600" />
-                  Sign out
+                  <ArrowLeftOnRectangleIcon className="h-6 w-6 shrink-0 text-slate-400 group-hover:text-crimson-600" />
+                  Abandon Ship
                 </button>
               </li>
             </ul>

@@ -1,26 +1,26 @@
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
-import { WalletIcon } from '@heroicons/react/24/outline';
+import { SkullIcon } from '@heroicons/react/24/outline';
 
 const AuthLayout = () => {
   return (
-    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-primary-50 to-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-ocean-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link to="/" className="flex justify-center items-center gap-2">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
-            <WalletIcon className="h-7 w-7 text-white" />
+        <Link to="/" className="flex justify-center items-center gap-3">
+          <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-2xl shadow-gold-500/40">
+            <SkullIcon className="h-8 w-8 text-slate-900" />
           </div>
         </Link>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-          Budgeter
+        <h2 className="mt-6 text-center text-4xl font-extrabold tracking-tight bg-gradient-to-r from-gold-300 via-gold-400 to-gold-500 bg-clip-text text-transparent">
+          Budgetier
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Take control of your finances
+        <p className="mt-2 text-center text-sm text-parchment-300 italic">
+          "Dead men tell no tales... but they keep excellent records!"
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl rounded-2xl sm:px-10">
+        <div className="bg-parchment-50 py-8 px-4 shadow-2xl shadow-black/40 rounded-2xl border-2 border-gold-300 sm:px-10">
           <Outlet />
         </div>
       </div>

@@ -45,12 +45,13 @@ const Login = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Sign in to your account</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome aboard, matey!</h2>
+      <p className="text-slate-500 text-sm mb-6">Present yer credentials to access the treasure ledger</p>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="label">
-            Email address
+            Parrot Address (Email)
           </label>
           <input
             id="email"
@@ -61,13 +62,13 @@ const Login = () => {
             value={formData.email}
             onChange={handleChange}
             className="input"
-            placeholder="Enter your email"
+            placeholder="yer.parrot@pirate.sea"
           />
         </div>
 
         <div>
           <label htmlFor="password" className="label">
-            Password
+            Secret Code (Password)
           </label>
           <div className="relative">
             <input
@@ -79,12 +80,12 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               className="input pr-10"
-              placeholder="Enter your password"
+              placeholder="X marks the spot..."
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-gold-600"
             >
               {showPassword ? (
                 <EyeSlashIcon className="h-5 w-5" />
@@ -103,14 +104,14 @@ const Login = () => {
               type="checkbox"
               className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-              Remember me
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700">
+              Remember this ship
             </label>
           </div>
 
           <div className="text-sm">
-            <button type="button" className="font-medium text-primary-600 hover:text-primary-500">
-              Forgot password?
+            <button type="button" className="font-medium text-gold-600 hover:text-gold-700">
+              Lost yer code?
             </button>
           </div>
         </div>
@@ -121,14 +122,14 @@ const Login = () => {
           fullWidth
           isLoading={isLoading}
         >
-          Sign in
+          {isLoading ? 'Hoisting the sails...' : 'Board the Ship!'}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
-        Don't have an account?{' '}
-        <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-          Sign up
+      <p className="mt-6 text-center text-sm text-slate-600">
+        New to the crew?{' '}
+        <Link to="/register" className="font-medium text-gold-600 hover:text-gold-700 underline decoration-gold-400">
+          Join the Pirate Council
         </Link>
       </p>
     </div>
