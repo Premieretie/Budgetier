@@ -3,6 +3,15 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
 const securityMiddleware = (app) => {
+  // Define allowed origins
+  const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'https://budgetier.ink',
+    'https://www.budgetier.ink',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ].filter(Boolean); // Remove undefined/null
+
   // Helmet for security headers
   app.use(helmet({
     contentSecurityPolicy: {
@@ -11,15 +20,24 @@ const securityMiddleware = (app) => {
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", process.env.FRONTEND_URL || "http://localhost:3000"],
+        connectSrc: ["'self'", ...allowedOrigins],
       },
     },
     crossOriginEmbedderPolicy: false,
   }));
 
-  // CORS configuration
+  // CORS configuration - dynamic origin validation
   const corsOptions = {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

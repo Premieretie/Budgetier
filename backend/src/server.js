@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 
 // Load dotenv only if not in production (Render sets env vars directly)
@@ -21,8 +22,29 @@ const dashboardRoutes = require('./routes/dashboard');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Trust proxy for rate limiting behind proxy (development)
+// Trust proxy for rate limiting behind proxy (Cloudflare/Render)
 app.set('trust proxy', 1);
+
+// CORS must be FIRST - before any routes
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL, 'https://budgetier.ink', 'https://www.budgetier.ink']
+  : ['http://localhost:3000', 'http://localhost:3001'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Security middleware
 const { authLimiter } = securityMiddleware(app);
@@ -107,13 +129,6 @@ app.use('/api/*', (req, res) => {
     message: 'API endpoint not found.'
   });
 });
-
-// CORS for frontend communication
-const cors = require('cors');
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
 
 // Global error handler
 app.use((err, req, res, next) => {
