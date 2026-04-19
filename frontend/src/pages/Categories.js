@@ -1,18 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, TagIcon, BanknotesIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, ArchiveBoxIcon, CurrencyDollarIcon, FaceSmileIcon, MapIcon, FireIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../hooks/useToast';
 import api from '../utils/api';
 import { formatCurrency } from '../utils/helpers';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 
+// Pirate treasure colors
 const PRESET_COLORS = [
-  '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#6366F1',
-  '#8B5CF6', '#EC4899', '#14B8A6', '#DC2626', '#059669',
-  '#6B7280', '#84CC16', '#06B6D4', '#F97316', '#8B5CF6',
+  '#D4AF37', // Gold
+  '#8B4513', // Saddle Brown (wood)
+  '#CD853F', // Peru (sand)
+  '#228B22', // Forest Green
+  '#B22222', // Firebrick Red
+  '#4B0082', // Indigo
+  '#191970', // Midnight Blue
+  '#FF6B35', // Burnt Orange
+  '#2F4F4F', // Dark Slate
+  '#800000', // Maroon
+  '#006400', // Dark Green
+  '#8B0000', // Dark Red
+  '#483D8B', // Dark Slate Blue
+  '#556B2F', // Dark Olive
+  '#8B4513', // Brown
 ];
 
-const PRESET_ICONS = ['💼', '🍔', '🚗', '⚡', '🏥', '🎬', '🛍️', '📚', '💳', '🐷', '🏠', '🎮', '✈️', '🎁', '📱'];
+// Pirate-themed cargo icons
+const PRESET_ICONS = ['⚔️', '�️', '�‍☠️', '�', '🍺', '🐟', '🦜', '⛵', '�', '�', '�️', '🛢️', '⚓', '💀', '�'];
 
 const Categories = () => {
   const { success, error } = useToast();
@@ -141,49 +155,78 @@ const Categories = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="page-title">Categories</h1>
-        <p className="page-description">Organize your income and expenses with custom categories</p>
+      {/* Pirate Header with Scroll Banner */}
+      <div className="relative">
+        {/* Decorative corners */}
+        <div className="absolute -top-2 -left-2 text-gold-500 text-2xl">⚜️</div>
+        <div className="absolute -top-2 -right-2 text-gold-500 text-2xl">⚜️</div>
+        
+        <div className="bg-gradient-to-r from-parchment-100 via-parchment-200 to-parchment-100 border-y-4 border-gold-400 py-6 px-8 shadow-lg relative">
+          {/* Scroll edges effect */}
+          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-gold-600 to-gold-400"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-gold-600 to-gold-400"></div>
+          
+          <div className="text-center">
+            <h1 className="text-4xl font-black text-slate-900 tracking-wide" style={{ fontFamily: 'serif' }}>
+              📦 CARGO TYPES 📦
+            </h1>
+            <p className="text-slate-600 italic mt-2 text-lg">
+              "Organize yer spoils and treasures by their proper cargo markings!"
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      {/* Pirate Tabs */}
+      <div className="border-b-4 border-gold-400">
+        <nav className="-mb-1 flex space-x-1 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 p-2 rounded-t-lg">
           <button
             onClick={() => setActiveTab('expense')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`flex-1 py-3 px-6 font-bold text-lg rounded-t-md transition-all duration-300 ${
               activeTab === 'expense'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'bg-gradient-to-b from-crimson-600 to-crimson-700 text-gold-100 border-t-2 border-gold-400'
+                : 'text-parchment-300 hover:text-gold-300 hover:bg-slate-600'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <TagIcon className="h-5 w-5" />
-              Expense Categories
+            <div className="flex items-center justify-center gap-3">
+              <FireIcon className="h-6 w-6" />
+              <span>Spoils Spent</span>
+              <span className="text-2xl">🔥</span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab('income')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`flex-1 py-3 px-6 font-bold text-lg rounded-t-md transition-all duration-300 ${
               activeTab === 'income'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'bg-gradient-to-b from-emerald-600 to-emerald-700 text-gold-100 border-t-2 border-gold-400'
+                : 'text-parchment-300 hover:text-gold-300 hover:bg-slate-600'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <BanknotesIcon className="h-5 w-5" />
-              Income Categories
+            <div className="flex items-center justify-center gap-3">
+              <CurrencyDollarIcon className="h-6 w-6" />
+              <span>Treasure Sources</span>
+              <span className="text-2xl">💰</span>
             </div>
           </button>
         </nav>
       </div>
 
-      {/* Add Button */}
+      {/* Add New Cargo Button */}
       <div className="flex justify-end">
-        <Button onClick={() => openAddModal(activeTab)} icon={PlusIcon}>
-          Add {activeTab === 'expense' ? 'Expense' : 'Income'} Category
-        </Button>
+        <button
+          onClick={() => openAddModal(activeTab)}
+          className="group relative px-6 py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded-lg shadow-lg shadow-gold-500/30 hover:shadow-gold-500/50 hover:scale-105 transition-all duration-300 border-2 border-gold-700"
+        >
+          <span className="flex items-center gap-2">
+            <PlusIcon className="h-5 w-5" />
+            Mark New {activeTab === 'expense' ? 'Spoil Type' : 'Treasure Source'}
+          </span>
+          {/* Decorative corners */}
+          <span className="absolute -top-1 -left-1 text-xs">✦</span>
+          <span className="absolute -top-1 -right-1 text-xs">✦</span>
+          <span className="absolute -bottom-1 -left-1 text-xs">✦</span>
+          <span className="absolute -bottom-1 -right-1 text-xs">✦</span>
+        </button>
       </div>
 
       {/* Categories Grid */}
@@ -192,74 +235,75 @@ const Categories = () => {
           {currentCategories.map((category) => {
             const total = expenseTotals[category.name] || 0;
             return (
+              {/* Treasure Chest Cargo Card */}
               <div
                 key={category.id}
-                className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                className="group relative bg-gradient-to-b from-amber-50 to-orange-50 rounded-lg border-4 border-amber-700 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden"
+                style={{ boxShadow: `0 8px 32px ${category.color}40, inset 0 2px 4px rgba(255,255,255,0.5)` }}
               >
-                {/* Top accent bar with gradient */}
+                {/* Treasure chest lid effect */}
                 <div
-                  className="h-1.5 w-full"
-                  style={{
-                    background: `linear-gradient(90deg, ${category.color}, ${category.color}80)`,
-                  }}
+                  className="h-3 w-full bg-gradient-to-r from-amber-800 via-amber-600 to-amber-800 border-b-2 border-amber-900"
                 />
 
                 <div className="p-5">
                   <div className="flex items-start justify-between">
-                    {/* Icon with gradient background */}
+                    {/* Icon in treasure style */}
                     <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner"
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-inner border-4 border-amber-600"
                       style={{
-                        background: `linear-gradient(135deg, ${category.color}20 0%, ${category.color}10 100%)`,
-                        border: `2px solid ${category.color}30`,
+                        background: `radial-gradient(circle at 30% 30%, ${category.color}60, ${category.color})`,
+                        boxShadow: `inset 0 2px 8px rgba(0,0,0,0.3), 0 4px 12px ${category.color}60`,
                       }}
                     >
                       {category.icon}
                     </div>
 
-                    {/* Action buttons - appear on hover */}
+                    {/* Action buttons - pirate style */}
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <button
                         onClick={() => handleEdit(category)}
-                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                        title="Edit"
+                        className="p-2 text-amber-700 hover:text-amber-900 hover:bg-amber-200 rounded-lg transition-colors border border-amber-300"
+                        title="Alter Markings"
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(category.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
+                        className="p-2 text-crimson-600 hover:text-crimson-800 hover:bg-crimson-100 rounded-lg transition-colors border border-crimson-300"
+                        title="Scuttle to Davy Jones"
                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Category info */}
+                  {/* Cargo info with pirate styling */}
                   <div className="mt-4">
-                    <h3 className="font-semibold text-gray-900 text-lg">{category.name}</h3>
-                    <p className="text-xs font-medium uppercase tracking-wide mt-1" style={{ color: category.color }}>
-                      {category.type}
+                    <h3 className="font-black text-slate-900 text-xl tracking-wide" style={{ fontFamily: 'serif' }}>
+                      {category.name}
+                    </h3>
+                    <p className="text-sm font-bold uppercase tracking-wider mt-2" style={{ color: category.color }}>
+                      {activeTab === 'expense' ? '☠️ Spoil Type' : '💎 Treasure Source'}
                     </p>
                   </div>
 
-                  {/* Expense total with visual indicator */}
+                  {/* Loot total with treasure styling */}
                   {activeTab === 'expense' && total > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="mt-4 pt-4 border-t-2 border-amber-200">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">Total Spent</span>
-                        <span className="font-bold text-lg" style={{ color: category.color }}>
+                        <span className="text-sm font-bold text-amber-800">Total Plundered</span>
+                        <span className="font-black text-xl text-crimson-700" style={{ fontFamily: 'serif' }}>
                           {formatCurrency(total)}
                         </span>
                       </div>
-                      {/* Mini progress bar effect */}
-                      <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      {/* Treasure bar effect */}
+                      <div className="mt-2 h-2 bg-amber-200 rounded-full overflow-hidden border border-amber-300">
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{
                             width: '100%',
-                            background: `linear-gradient(90deg, ${category.color}, ${category.color}80)`,
+                            background: `linear-gradient(90deg, ${category.color}, #D4AF37)`,
                           }}
                         />
                       </div>
@@ -267,33 +311,45 @@ const Categories = () => {
                   )}
 
                   {activeTab === 'income' && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <span className="text-xs text-gray-400">Income Category</span>
+                    <div className="mt-4 pt-4 border-t-2 border-amber-200">
+                      <span className="text-sm font-bold text-emerald-700">✨ A Source of Wealth</span>
                     </div>
                   )}
                 </div>
+                
+                {/* Bottom chest decoration */}
+                <div className="h-2 bg-gradient-to-r from-amber-800 via-amber-600 to-amber-800" />
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="card p-12 text-center bg-gradient-to-br from-gray-50 to-white">
-          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary-100 to-primary-200 rounded-full flex items-center justify-center mb-4">
-            <SparklesIcon className="h-10 w-10 text-primary-600" />
+        /* Empty Treasure Hold */
+        <div className="relative p-12 text-center bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 rounded-xl border-4 border-gold-500 shadow-2xl">
+          {/* Corner decorations */}
+          <div className="absolute top-4 left-4 text-gold-400 text-2xl">🏴‍☠️</div>
+          <div className="absolute top-4 right-4 text-gold-400 text-2xl">🏴‍☠️</div>
+          
+          <div className="w-24 h-24 mx-auto bg-gradient-to-br from-gold-400 to-gold-600 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-gold-500/50 border-4 border-gold-700">
+            <span className="text-5xl">📦</span>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No {activeTab} categories yet
+          <h3 className="text-2xl font-black text-gold-300 mb-3" style={{ fontFamily: 'serif' }}>
+            {activeTab === 'expense' ? 'The Spoils Chest Be Empty!' : 'No Treasure Sources Charted!'}
           </h3>
-          <p className="text-gray-500 max-w-sm mx-auto">
-            Create your first category to start organizing your {activeTab}s and get better insights into your finances.
+          <p className="text-parchment-300 max-w-md mx-auto text-lg italic">
+            {activeTab === 'expense' 
+              ? "Arr! Ye haven't marked any cargo types for yer spent loot. Create one to track where yer gold goes!"
+              : "Shiver me timbers! No sources of income be recorded. Mark yer treasure streams to see the full bounty!"}
           </p>
-          <Button
+          <button
             onClick={() => openAddModal(activeTab)}
-            icon={PlusIcon}
-            className="mt-6"
+            className="mt-8 px-8 py-4 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded-lg shadow-lg shadow-gold-500/30 hover:shadow-gold-500/50 hover:scale-105 transition-all duration-300 border-2 border-gold-700"
           >
-            Create {activeTab === 'expense' ? 'Expense' : 'Income'} Category
-          </Button>
+            <span className="flex items-center gap-2">
+              <PlusIcon className="h-5 w-5" />
+              Mark First {activeTab === 'expense' ? 'Spoil Type' : 'Treasure Source'}
+            </span>
+          </button>
         </div>
       )}
 
