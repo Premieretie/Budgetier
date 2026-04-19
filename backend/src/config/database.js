@@ -1,18 +1,76 @@
 const { Pool } = require('pg');
 
-// Use DATABASE_URL from environment (Render provides this)
-const pool = new Pool({
+// Check if DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error('❌ ERROR: DATABASE_URL environment variable is not set');
+  console.error('Please set DATABASE_URL to your PostgreSQL connection string');
+  process.exit(1);
+}
+
+// Parse connection URL to determine if SSL is needed
+const isExternalHost = () => {
+  const url = process.env.DATABASE_URL || '';
+  // External connections typically have these patterns
+  return url.includes('.render.com') || 
+         url.includes('amazonaws.com') || 
+         url.includes('neon.tech') ||
+         url.includes('supabase.co') ||
+         url.includes('ondigitalocean.com');
+};
+
+// Create pool with appropriate SSL settings
+const poolConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // Only use SSL for external connections
+  ssl: isExternalHost() ? { rejectUnauthorized: false } : false,
+  // Connection pool settings
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 5000, // Return error after 5 seconds if connection not established
+};
+
+const pool = new Pool(poolConfig);
+
+// Handle pool errors (don't crash the app)
+pool.on('error', (err, client) => {
+  console.error('Unexpected database pool error:', err);
 });
 
-// Handle connection errors
-pool.on('error', (err) => {
-  console.error('Unexpected database error:', err);
-});
+// Test database connection with retries
+async function testConnection(retries = 3, delay = 3000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const client = await pool.connect();
+      const result = await client.query('SELECT NOW() as now');
+      client.release();
+      console.log(`✅ Database connected successfully (attempt ${attempt}/${retries})`);
+      console.log(`   Server time: ${result.rows[0].now}`);
+      return true;
+    } catch (err) {
+      console.error(`❌ Database connection attempt ${attempt} failed:`, err.message);
+      if (attempt === retries) {
+        console.error('   All connection attempts failed. Please check:');
+        console.error('   - DATABASE_URL is correct');
+        console.error('   - Database server is running');
+        console.error('   - Network allows connection');
+        return false;
+      }
+      console.log(`   Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  return false;
+}
 
 // Initialize database - creates tables if they don't exist
 async function initDb() {
+  // First test the connection
+  const connected = await testConnection();
+  if (!connected) {
+    console.error('⚠️  Continuing without database initialization. Tables may not exist.');
+    return;
+  }
+
   const client = await pool.connect();
 
   try {
@@ -168,8 +226,11 @@ async function initDb() {
   }
 }
 
-// Initialize on require
-initDb();
+// Initialize on module load (non-blocking)
+initDb().catch(err => {
+  console.error('Database initialization failed:', err);
+  // Don't exit - let the app start anyway, endpoints will handle DB errors
+});
 
 // Query helper - PostgreSQL uses $1, $2 instead of ?
 const query = async (text, params) => {
