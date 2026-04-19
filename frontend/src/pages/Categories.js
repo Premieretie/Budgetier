@@ -235,7 +235,6 @@ const Categories = () => {
           {currentCategories.map((category) => {
             const total = expenseTotals[category.name] || 0;
             return (
-              {/* Treasure Chest Cargo Card */}
               <div
                 key={category.id}
                 className="group relative bg-gradient-to-b from-amber-50 to-orange-50 rounded-lg border-4 border-amber-700 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden"
@@ -324,7 +323,6 @@ const Categories = () => {
           })}
         </div>
       ) : (
-        /* Empty Treasure Hold */
         <div className="relative p-12 text-center bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 rounded-xl border-4 border-gold-500 shadow-2xl">
           {/* Corner decorations */}
           <div className="absolute top-4 left-4 text-gold-400 text-2xl">🏴‍☠️</div>
