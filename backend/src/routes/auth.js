@@ -9,6 +9,7 @@ const { authenticate } = require('../middleware/auth');
 
 // Register
 router.post('/register', registerValidation, async (req, res) => {
+  console.log('📥 REGISTER endpoint hit:', req.body?.email);
   try {
     const { email, password, firstName, lastName, consentGiven, dataRetentionAgreement } = req.body;
 

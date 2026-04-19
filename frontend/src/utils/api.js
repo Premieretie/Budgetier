@@ -1,9 +1,18 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || '/api';
+// Production API URL (change this if deploying elsewhere)
+const PRODUCTION_API_URL = 'https://api.budgetier.ink';
+const DEVELOPMENT_API_URL = 'http://localhost:3000';
+
+// Determine if we're in production (GitHub Pages) or development
+const isProduction = window.location.hostname === 'budgetier.ink' || 
+                     window.location.hostname === 'www.budgetier.ink';
+
+const API_URL = process.env.REACT_APP_API_URL || 
+                (isProduction ? PRODUCTION_API_URL : DEVELOPMENT_API_URL);
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
