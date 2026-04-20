@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, TrophyIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, TrophyIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../hooks/useToast';
 import api from '../utils/api';
 import { formatCurrency, formatDate, calculateProgress } from '../utils/helpers';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import GoldDisplay from '../components/GoldDisplay';
+import NotificationsDropdown from '../components/NotificationsDropdown';
 
 const Goals = () => {
   const { success, error } = useToast();
   const [goals, setGoals] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [gold, setGold] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
@@ -27,6 +30,7 @@ const Goals = () => {
 
   useEffect(() => {
     fetchGoals();
+    fetchUserStats();
   }, []);
 
   const fetchGoals = async () => {
@@ -40,6 +44,23 @@ const Goals = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUserStats = async () => {
+    try {
+      const response = await api.get('/gamification/stats');
+      if (response.data?.success) {
+        setGold(response.data.data.gold || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load user stats:', err);
+    }
+  };
+
+  const refreshAll = async () => {
+    setLoading(true);
+    await Promise.all([fetchGoals(), fetchUserStats()]);
+    setLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -148,9 +169,27 @@ const Goals = () => {
           <h1 className="page-title">Financial Goals</h1>
           <p className="page-description">Set and track your savings and debt repayment goals</p>
         </div>
-        <Button onClick={() => setShowModal(true)} icon={PlusIcon}>
-          New Goal
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Gold Display */}
+          <GoldDisplay gold={gold} size="md" />
+          
+          {/* Refresh Button */}
+          <button
+            onClick={refreshAll}
+            disabled={loading}
+            className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+            title="Refresh data"
+          >
+            <ArrowPathIcon className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          
+          {/* Notifications */}
+          <NotificationsDropdown />
+          
+          <Button onClick={() => setShowModal(true)} icon={PlusIcon}>
+            New Goal
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

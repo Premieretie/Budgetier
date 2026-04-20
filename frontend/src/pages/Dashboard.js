@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   PlusIcon,
   MapIcon,
-  BellIcon,
   Cog6ToothIcon,
   ArrowPathIcon,
   ChevronRightIcon,
@@ -19,6 +18,8 @@ import QuickAddExpense from '../components/QuickAddExpense';
 import LootDrop from '../components/LootDrop';
 import LineChart from '../components/charts/LineChart';
 import DoughnutChart from '../components/charts/DoughnutChart';
+import NotificationsDropdown from '../components/NotificationsDropdown';
+import GoldDisplay from '../components/GoldDisplay';
 import api from '../utils/api';
 import { formatCurrency } from '../utils/helpers';
 
@@ -207,23 +208,35 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Gold Display - Always visible */}
+            <GoldDisplay gold={stats?.gold || 0} size="md" />
+            
+            {/* Refresh Button with loading state */}
             <button 
-              onClick={fetchDashboard}
-              className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all"
+              onClick={async () => {
+                await fetchDashboard();
+                if (viewMode === 'charts') {
+                  await fetchChartData();
+                }
+              }}
+              disabled={loading}
+              className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+              title="Refresh data"
             >
-              <ArrowPathIcon className="w-5 h-5 text-gray-600" />
+              <ArrowPathIcon className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <button className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all relative">
-              <BellIcon className="w-5 h-5 text-gray-600" />
-              {rewards?.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {rewards.length}
-                </span>
-              )}
-            </button>
-            <button className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all">
+            
+            {/* Notifications Dropdown */}
+            <NotificationsDropdown />
+            
+            {/* Settings Button */}
+            <a 
+              href="/settings"
+              className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all block"
+            >
               <Cog6ToothIcon className="w-5 h-5 text-gray-600" />
-            </button>
+            </a>
+            
             {/* View Toggle Button */}
             <button
               onClick={() => setViewMode(viewMode === 'game' ? 'charts' : 'game')}

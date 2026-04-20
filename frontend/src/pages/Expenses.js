@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../hooks/useToast';
 import api from '../utils/api';
 import { formatCurrency, formatDate, getCategoryColor } from '../utils/helpers';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import BarChart from '../components/charts/BarChart';
+import GoldDisplay from '../components/GoldDisplay';
+import NotificationsDropdown from '../components/NotificationsDropdown';
 
 const Expenses = () => {
   const { success, error } = useToast();
@@ -13,6 +15,7 @@ const Expenses = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [gold, setGold] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -29,6 +32,7 @@ const Expenses = () => {
     fetchCategories();
     fetchExpenses();
     fetchCategoryBreakdown();
+    fetchUserStats();
   }, [categoryFilter]);
 
   const fetchCategories = async () => {
@@ -61,6 +65,28 @@ const Expenses = () => {
     } catch (err) {
       console.error('Failed to load category breakdown');
     }
+  };
+
+  const fetchUserStats = async () => {
+    try {
+      const response = await api.get('/gamification/stats');
+      if (response.data?.success) {
+        setGold(response.data.data.gold || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load user stats:', err);
+    }
+  };
+
+  const refreshAll = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchCategories(),
+      fetchExpenses(),
+      fetchCategoryBreakdown(),
+      fetchUserStats(),
+    ]);
+    setLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -149,9 +175,27 @@ const Expenses = () => {
           <h1 className="page-title">Expenses</h1>
           <p className="page-description">Track and categorize your spending</p>
         </div>
-        <Button onClick={() => setShowModal(true)} icon={PlusIcon}>
-          Add Expense
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Gold Display */}
+          <GoldDisplay gold={gold} size="md" />
+          
+          {/* Refresh Button */}
+          <button
+            onClick={refreshAll}
+            disabled={loading}
+            className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+            title="Refresh data"
+          >
+            <ArrowPathIcon className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          
+          {/* Notifications */}
+          <NotificationsDropdown />
+          
+          <Button onClick={() => setShowModal(true)} icon={PlusIcon}>
+            Add Expense
+          </Button>
+        </div>
       </div>
 
       {/* Total Card */}
