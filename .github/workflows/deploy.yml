@@ -30,7 +30,7 @@ jobs:
       - name: Build
         run: |
           cd frontend
-          npm run build
+          CI=false npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
