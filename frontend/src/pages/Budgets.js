@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, ChartPieIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../hooks/useToast';
 import api from '../utils/api';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import GoldDisplay from '../components/GoldDisplay';
+import NotificationsDropdown from '../components/NotificationsDropdown';
 
 const Budgets = () => {
   const { success, error } = useToast();
   const [budgets, setBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [gold, setGold] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
   const [budgetProgress, setBudgetProgress] = useState({});
@@ -27,6 +30,7 @@ const Budgets = () => {
   useEffect(() => {
     fetchCategories();
     fetchBudgets();
+    fetchUserStats();
   }, []);
 
   const fetchCategories = async () => {
@@ -66,6 +70,23 @@ const Budgets = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUserStats = async () => {
+    try {
+      const response = await api.get('/gamification/stats');
+      if (response.data?.success) {
+        setGold(response.data.data.gold || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load user stats:', err);
+    }
+  };
+
+  const refreshAll = async () => {
+    setLoading(true);
+    await Promise.all([fetchCategories(), fetchBudgets(), fetchUserStats()]);
+    setLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -157,9 +178,27 @@ const Budgets = () => {
           <h1 className="page-title">Budgets</h1>
           <p className="page-description">Set spending limits and track your progress</p>
         </div>
-        <Button onClick={() => setShowModal(true)} icon={PlusIcon}>
-          New Budget
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Gold Display */}
+          <GoldDisplay gold={gold} size="md" />
+          
+          {/* Refresh Button */}
+          <button
+            onClick={refreshAll}
+            disabled={loading}
+            className="p-2 bg-white rounded-xl shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+            title="Refresh data"
+          >
+            <ArrowPathIcon className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          
+          {/* Notifications */}
+          <NotificationsDropdown />
+          
+          <Button onClick={() => setShowModal(true)} icon={PlusIcon}>
+            New Budget
+          </Button>
+        </div>
       </div>
 
       {/* Active Budgets */}
