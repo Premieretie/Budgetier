@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://budgetier.ink",
   "dependencies": {
+    "lucide-react": "^0.400.0",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "axios": "^1.6.2",
