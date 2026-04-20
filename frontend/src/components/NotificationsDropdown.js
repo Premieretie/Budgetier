@@ -10,7 +10,7 @@ import {
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import api from '../utils/api';
-import { formatDistanceToNow } from '../utils/helpers';
+import { formatDistanceToNow } from 'date-fns';
 
 const NotificationsDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
