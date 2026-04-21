@@ -20,11 +20,14 @@ import LineChart from '../components/charts/LineChart';
 import DoughnutChart from '../components/charts/DoughnutChart';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 import GoldDisplay from '../components/GoldDisplay';
+import UpgradePrompt from '../components/UpgradePrompt';
+import useSubscription from '../hooks/useSubscription';
 import api from '../utils/api';
 import { formatCurrency } from '../utils/helpers';
 
 const Dashboard = () => {
   const { success, error } = useToast();
+  const { isPremium } = useSubscription();
   const {
     stats,
     ship,
@@ -46,6 +49,7 @@ const Dashboard = () => {
   const [viewMode, setViewMode] = useState('game'); // 'game' or 'charts'
   const [chartData, setChartData] = useState(null);
   const [chartLoading, setChartLoading] = useState(false);
+  const [showChartUpgradePrompt, setShowChartUpgradePrompt] = useState(false);
 
   // Handle quick expense add
   const handleQuickAdd = async (expenseData) => {
@@ -239,7 +243,14 @@ const Dashboard = () => {
             
             {/* View Toggle Button */}
             <button
-              onClick={() => setViewMode(viewMode === 'game' ? 'charts' : 'game')}
+              onClick={() => {
+                if (viewMode === 'game' && !isPremium) {
+                  setShowChartUpgradePrompt(true);
+                  return;
+                }
+                setShowChartUpgradePrompt(false);
+                setViewMode(viewMode === 'game' ? 'charts' : 'game');
+              }}
               className={`p-2 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 px-4 ${
                 viewMode === 'charts' ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-600'
               }`}
@@ -269,6 +280,17 @@ const Dashboard = () => {
             loading={addingExpense}
           />
         </div>
+
+        {/* Charts upgrade prompt (shown when free user clicks Charts) */}
+        {showChartUpgradePrompt && (
+          <div className="mb-6">
+            <UpgradePrompt
+              title="Advanced Charts are a Premium feature"
+              message="Upgrade your ship to unlock income vs expenses charts, category breakdowns, and budget alerts."
+              onDismiss={() => setShowChartUpgradePrompt(false)}
+            />
+          </div>
+        )}
 
         {/* GAME MODE VIEW */}
         {viewMode === 'game' && (

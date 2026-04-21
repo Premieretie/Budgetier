@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
 const FEATURES = [
@@ -56,6 +56,7 @@ const TESTIMONIALS = [
 const AnimatedCounter = ({ end, duration = 2000, suffix = '' }) => {
   const [count, setCount] = useState(0);
   const [started, setStarted] = useState(false);
+  const ref = useRef(null);
 
   useEffect(() => {
     if (!started) return;
@@ -74,17 +75,18 @@ const AnimatedCounter = ({ end, duration = 2000, suffix = '' }) => {
   }, [started, end, duration]);
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setStarted(true); },
       { threshold: 0.5 }
     );
-    const el = document.getElementById(`counter-${end}`);
-    if (el) observer.observe(el);
+    observer.observe(el);
     return () => observer.disconnect();
-  }, [end]);
+  }, []);
 
   return (
-    <span id={`counter-${end}`}>
+    <span ref={ref}>
       {count.toLocaleString()}{suffix}
     </span>
   );

@@ -17,6 +17,7 @@ import {
   CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import useSubscription from '../../hooks/useSubscription';
 
 const navigation = [
   { name: 'Captain\'s Log', href: '/dashboard', icon: MapIcon },
@@ -40,6 +41,7 @@ const secondaryNavigation = [
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { logout } = useAuthStore();
+  const { isPremium, loading: subLoading } = useSubscription();
 
   const isActive = (path) => location.pathname === path;
 
@@ -141,6 +143,22 @@ const Sidebar = ({ isOpen, onClose }) => {
               </li>
             </ul>
           </nav>
+
+          {/* Free plan upgrade nudge */}
+          {!subLoading && !isPremium && (
+            <NavLink
+              to="/pricing"
+              className="block mx-0 mb-3 bg-gradient-to-r from-amber-500 to-amber-400 text-white rounded-2xl px-4 py-3 text-center shadow-md hover:from-amber-400 hover:to-amber-300 transition-all"
+            >
+              <p className="text-xs font-bold">⚓ Free Plan</p>
+              <p className="text-xs opacity-90 mt-0.5">Upgrade for more features →</p>
+            </NavLink>
+          )}
+          {!subLoading && isPremium && (
+            <div className="mx-0 mb-3 bg-gradient-to-r from-amber-100 to-yellow-100 border border-amber-200 rounded-2xl px-4 py-3 text-center">
+              <p className="text-xs font-bold text-amber-800">✨ Premium Captain</p>
+            </div>
+          )}
         </div>
       </div>
 

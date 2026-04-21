@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const authenticateToken = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const Cosmetic = require('../models/cosmetic');
 
-router.use(authenticateToken);
+router.use(authenticate);
 
 // GET /api/cosmetics/shop - get all items with ownership/availability info
 router.get('/shop', async (req, res) => {

@@ -30,6 +30,18 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ToastContainer from './components/ui/ToastContainer';
 import ConsentModal from './components/ConsentModal';
 
+const RootRedirect = () => {
+  const { isAuthenticated, isLoading } = useAuthStore();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/landing" replace />;
+};
+
 function App() {
   const { initializeAuth, isLoading, requiresConsent } = useAuthStore();
   const { initializeTheme } = useThemeStore();
@@ -50,6 +62,9 @@ function App() {
   return (
     <>
       <Routes>
+        {/* Root redirect */}
+        <Route path="/" element={<RootRedirect />} />
+
         {/* Public Landing */}
         <Route path="/landing" element={<Landing />} />
 
@@ -62,7 +77,6 @@ function App() {
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/income" element={<Income />} />
             <Route path="/expenses" element={<Expenses />} />

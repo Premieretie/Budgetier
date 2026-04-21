@@ -73,7 +73,11 @@ class Subscription {
   }
 
   static async getLimits(userId) {
-    const isPrem = await this.isPremium(userId);
+    const sub = await this.getByUserId(userId);
+    const isPrem = sub
+      ? (sub.plan === 'premium' && sub.status === 'active') ||
+        (sub.trial_ends_at && new Date(sub.trial_ends_at) > new Date())
+      : false;
     return {
       isPremium: isPrem,
       goals: isPrem ? Infinity : FREE_LIMITS.goals,

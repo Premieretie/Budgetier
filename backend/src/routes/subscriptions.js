@@ -1,17 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const authenticateToken = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const Subscription = require('../models/subscription');
 
 // All routes require auth
-router.use(authenticateToken);
+router.use(authenticate);
 
 // GET /api/subscriptions/status - get current user's subscription
 router.get('/status', async (req, res) => {
   try {
     const sub = await Subscription.getOrCreate(req.user.id);
-    const isPrem = await Subscription.isPremium(req.user.id);
-    const limits = await Subscription.getLimits(req.user.id);
+    // Derive isPremium from the already-fetched sub — no extra DB round-trip
+    const isPrem =
+      (sub.plan === 'premium' && sub.status === 'active') ||
+      (sub.trial_ends_at && new Date(sub.trial_ends_at) > new Date());
 
     return res.json({
       success: true,
@@ -21,7 +23,10 @@ router.get('/status', async (req, res) => {
         isPremium: isPrem,
         trialEndsAt: sub.trial_ends_at,
         currentPeriodEnd: sub.current_period_end,
-        limits,
+        limits: {
+          isPremium: isPrem,
+          goals: isPrem ? null : 3, // null = unlimited
+        },
       },
     });
   } catch (err) {

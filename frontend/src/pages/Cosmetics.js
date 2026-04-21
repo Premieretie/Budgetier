@@ -31,7 +31,13 @@ const ItemCard = ({ item, onUnlock, onEquip, isPremium }) => {
     }
   };
 
-  const colors = item.preview_colors || {};
+  const colors = (() => {
+    try {
+      if (!item.preview_colors) return {};
+      if (typeof item.preview_colors === 'string') return JSON.parse(item.preview_colors);
+      return item.preview_colors;
+    } catch { return {}; }
+  })();
   const bgStyle = colors.primary
     ? { background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary || colors.primary})` }
     : { background: `linear-gradient(135deg, ${colors.fill || '#f59e0b'}, ${colors.border || '#b45309'})` };
