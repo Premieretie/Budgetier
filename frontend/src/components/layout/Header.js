@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bars3Icon,
-  BellIcon,
   SunIcon,
   MoonIcon,
   UserCircleIcon,
@@ -49,16 +48,6 @@ const Header = ({ onMenuClick }) => {
               <MoonIcon className="h-5 w-5" />
             )}
           </button>
-
-          {/* Notifications */}
-          <Link
-            to="/notifications"
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors relative"
-          >
-            <BellIcon className="h-5 w-5" />
-            {/* Notification badge - can be dynamic */}
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>
-          </Link>
 
           {/* User menu */}
           <div className="relative">
