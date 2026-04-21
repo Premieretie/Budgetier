@@ -13,6 +13,8 @@ import {
   XMarkIcon,
   MapIcon,
   FireIcon,
+  SparklesIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../hooks/useAuthStore';
 
@@ -23,6 +25,11 @@ const navigation = [
   { name: 'Quests', href: '/goals', icon: TrophyIcon },
   { name: 'Treasure Maps', href: '/budgets', icon: ChartPieIcon },
   { name: 'Cargo Types', href: '/categories', icon: TagIcon },
+  { name: 'Cosmetics', href: '/cosmetics', icon: SparklesIcon },
+];
+
+const upgradeNav = [
+  { name: 'Pricing & Plans', href: '/pricing', icon: CurrencyDollarIcon },
 ];
 
 const secondaryNavigation = [
@@ -81,6 +88,23 @@ const Sidebar = ({ isOpen, onClose }) => {
               
               <li className="mt-auto">
                 <ul role="list" className="-mx-2 space-y-1">
+                  {upgradeNav.map((item) => (
+                    <li key={item.name}>
+                      <NavLink
+                        to={item.href}
+                        className={({ isActive }) =>
+                          `group flex gap-x-3 rounded-lg p-2 text-sm font-semibold leading-6 ${
+                            isActive
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'text-amber-600 hover:bg-amber-50 hover:text-amber-800'
+                          }`
+                        }
+                      >
+                        <item.icon className="h-6 w-6 shrink-0 text-amber-400 group-hover:text-amber-600" aria-hidden="true" />
+                        {item.name}
+                      </NavLink>
+                    </li>
+                  ))}
                   {secondaryNavigation.map((item) => (
                     <li key={item.name}>
                       <NavLink
@@ -171,6 +195,22 @@ const Sidebar = ({ isOpen, onClose }) => {
           
           <div className="mt-8 pt-8 border-t border-gray-200">
             <ul className="space-y-1">
+              {upgradeNav.map((item) => (
+                <li key={item.name}>
+                  <NavLink
+                    to={item.href}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 ${
+                        isActive ? 'bg-amber-100 text-amber-800' : 'text-amber-600 hover:bg-amber-50 hover:text-amber-800'
+                      }`
+                    }
+                  >
+                    <item.icon className="h-6 w-6 shrink-0 text-amber-400 group-hover:text-amber-600" />
+                    {item.name}
+                  </NavLink>
+                </li>
+              ))}
               {secondaryNavigation.map((item) => (
                 <li key={item.name}>
                   <NavLink

@@ -286,6 +286,75 @@ async function initDb() {
       )
     `);
 
+    // Subscriptions Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL UNIQUE,
+        plan VARCHAR(20) NOT NULL DEFAULT 'free',
+        status VARCHAR(20) NOT NULL DEFAULT 'active',
+        trial_ends_at TIMESTAMP,
+        current_period_start TIMESTAMP,
+        current_period_end TIMESTAMP,
+        stripe_customer_id VARCHAR(255),
+        stripe_subscription_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Cosmetic Items Catalog
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cosmetic_items (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) NOT NULL UNIQUE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        type VARCHAR(50) NOT NULL,
+        preview_emoji VARCHAR(10),
+        preview_colors JSONB,
+        unlock_method VARCHAR(20) NOT NULL DEFAULT 'premium',
+        gold_cost INT DEFAULT 0,
+        is_default BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // User Cosmetics (owned/equipped)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_cosmetics (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL,
+        item_key VARCHAR(100) NOT NULL,
+        is_equipped BOOLEAN DEFAULT FALSE,
+        unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, item_key),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Seed default cosmetic items
+    const cosmeticItems = [
+      ['default_ship', 'Classic Galleon', 'The trusty ship you started with', 'theme', '🚢', '{"primary":"#1e40af","secondary":"#f59e0b"}', 'default', 0, true],
+      ['dark_ship', 'Shadow Frigate', 'A dark and mysterious vessel', 'theme', '🖤', '{"primary":"#0f172a","secondary":"#6366f1"}', 'premium', 0, false],
+      ['golden_ship', 'Golden Galleon', 'All that glitters', 'theme', '✨', '{"primary":"#b45309","secondary":"#fcd34d"}', 'gold', 5000, false],
+      ['emerald_ship', 'Emerald Corsair', 'Wealth runs deep in the sea', 'theme', '💚', '{"primary":"#065f46","secondary":"#34d399"}', 'premium', 0, false],
+      ['crimson_ship', 'Crimson Marauder', 'Red sails at dawn', 'theme', '❤️‍🔥', '{"primary":"#7f1d1d","secondary":"#f87171"}', 'gold', 3000, false],
+      ['chest_classic', 'Oak Chest', 'Simple and reliable', 'chest', '📦', '{"fill":"#a16207","border":"#78350f"}', 'default', 0, true],
+      ['chest_golden', 'Golden Chest', 'A legendary treasure vessel', 'chest', '🏆', '{"fill":"#f59e0b","border":"#b45309"}', 'premium', 0, false],
+      ['chest_crystal', 'Crystal Chest', 'Transparent wealth', 'chest', '💎', '{"fill":"#67e8f9","border":"#0891b2"}', 'gold', 2000, false],
+    ];
+
+    for (const item of cosmeticItems) {
+      await client.query(
+        `INSERT INTO cosmetic_items (key, name, description, type, preview_emoji, preview_colors, unlock_method, gold_cost, is_default)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (key) DO NOTHING`,
+        item
+      );
+    }
+
     // Insert default categories
     const defaultCategories = [
       ['Food & Dining', 'expense', '#EF4444', '🍔'],

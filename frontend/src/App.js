@@ -21,6 +21,9 @@ import Categories from './pages/Categories';
 import Settings from './pages/Settings';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import DataExport from './pages/DataExport';
+import Landing from './pages/Landing';
+import Pricing from './pages/Pricing';
+import Cosmetics from './pages/Cosmetics';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -47,6 +50,9 @@ function App() {
   return (
     <>
       <Routes>
+        {/* Public Landing */}
+        <Route path="/landing" element={<Landing />} />
+
         {/* Auth Routes */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
@@ -66,6 +72,8 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/data-export" element={<DataExport />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/cosmetics" element={<Cosmetics />} />
           </Route>
         </Route>
 

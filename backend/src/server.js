@@ -20,6 +20,8 @@ const categoryRoutes = require('./routes/categories');
 const notificationRoutes = require('./routes/notifications');
 const dashboardRoutes = require('./routes/dashboard');
 const gamificationRoutes = require('./routes/gamification');
+const subscriptionRoutes = require('./routes/subscriptions');
+const cosmeticsRoutes = require('./routes/cosmetics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -80,6 +82,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/gamification', gamificationRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/cosmetics', cosmeticsRoutes);
 
 // Root route - API info
 app.get('/', (req, res) => {

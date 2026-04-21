@@ -4,6 +4,8 @@ const User = require('../models/user');
 const { Category } = require('../models/category');
 const Notification = require('../models/notification');
 const Gamification = require('../models/gamification');
+const Subscription = require('../models/subscription');
+const Cosmetic = require('../models/cosmetic');
 const { generateToken } = require('../middleware/auth');
 const { registerValidation, loginValidation } = require('../middleware/validation');
 const { authenticate } = require('../middleware/auth');
@@ -38,6 +40,12 @@ router.post('/register', registerValidation, async (req, res) => {
 
     // Initialize gamification stats
     await Gamification.initializeUserStats(user.id);
+
+    // Initialize subscription (free plan)
+    await Subscription.getOrCreate(user.id);
+
+    // Unlock default cosmetics
+    await Cosmetic.unlockDefault(user.id);
 
     // Create welcome notification
     await Notification.create({

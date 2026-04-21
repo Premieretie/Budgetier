@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import GoldDisplay from '../components/GoldDisplay';
 import NotificationsDropdown from '../components/NotificationsDropdown';
+import UpgradePrompt from '../components/UpgradePrompt';
 
 const Goals = () => {
   const { success, error } = useToast();
@@ -14,6 +15,7 @@ const Goals = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [gold, setGold] = useState(0);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
@@ -79,7 +81,12 @@ const Goals = () => {
       resetForm();
       fetchGoals();
     } catch (err) {
-      error(err.response?.data?.message || 'Failed to save goal');
+      if (err.response?.data?.code === 'GOAL_LIMIT_REACHED') {
+        setShowModal(false);
+        setShowUpgradePrompt(true);
+      } else {
+        error(err.response?.data?.message || 'Failed to save goal');
+      }
     }
   };
 
@@ -191,6 +198,15 @@ const Goals = () => {
           </Button>
         </div>
       </div>
+
+      {/* Upgrade Prompt */}
+      {showUpgradePrompt && (
+        <UpgradePrompt
+          title="Upgrade your ship to unlock more treasure maps!"
+          message="Free plan is limited to 3 active goals. Upgrade to Premium for unlimited goals."
+          onDismiss={() => setShowUpgradePrompt(false)}
+        />
+      )}
 
       {/* Stats */}
       {stats && (

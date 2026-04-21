@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Goal = require('../models/goal');
 const Notification = require('../models/notification');
+const Subscription = require('../models/subscription');
 const { authenticate, requireConsent } = require('../middleware/auth');
 const { goalValidation } = require('../middleware/validation');
 
@@ -67,6 +68,20 @@ router.get('/:id', async (req, res) => {
 router.post('/', goalValidation, async (req, res) => {
   try {
     const { name, type, targetAmount, currentAmount, deadline, description } = req.body;
+
+    // Check free plan goal limit
+    const limits = await Subscription.getLimits(req.user.id);
+    if (limits.goals !== Infinity) {
+      const existing = await Goal.findByUserId(req.user.id, { completed: false });
+      if (existing.length >= limits.goals) {
+        return res.status(403).json({
+          success: false,
+          message: `Upgrade your ship to unlock more treasure maps! Free plan is limited to ${limits.goals} active goals.`,
+          code: 'GOAL_LIMIT_REACHED',
+          limit: limits.goals,
+        });
+      }
+    }
 
     const goal = await Goal.create({
       userId: req.user.id,
