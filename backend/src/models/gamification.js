@@ -254,11 +254,30 @@ class Gamification {
   // ============================================
   // TREASURE CHEST (SAVINGS VISUALIZATION)
   // ============================================
-  
-  static async addToTreasureChest(userId, amount) {
+
+  // Recalculate treasure chest from real income/expense data.
+  // Called automatically after any income or expense mutation.
+  static async recalculateTreasureChest(userId) {
+    const [incomeRows, expenseRows] = await Promise.all([
+      query('SELECT COALESCE(SUM(amount), 0) AS total FROM income WHERE user_id = $1', [userId]),
+      query('SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE user_id = $1', [userId]),
+    ]);
+
+    const totalIncome  = parseFloat(incomeRows[0].total);
+    const totalExpenses = parseFloat(expenseRows[0].total);
+    const savings = Math.max(0, totalIncome - totalExpenses);
+
     const stats = await this.getUserStats(userId);
-    const newAmount = parseFloat(stats.treasure_chest_amount) + parseFloat(amount);
-    return this.updateUserStats(userId, { treasure_chest_amount: newAmount });
+    const prev  = parseFloat(stats.treasure_chest_amount || 0);
+
+    await this.updateUserStats(userId, { treasure_chest_amount: savings });
+
+    // Unlock BIG_SAVER achievement when savings first cross $1000
+    if (prev < 1000 && savings >= 1000) {
+      await this.unlockAchievement(userId, 'BIG_SAVER');
+    }
+
+    return { savings, prev, milestone: savings >= 1000 && prev < 1000 };
   }
   
   // ============================================
@@ -547,6 +566,9 @@ class Gamification {
   // ============================================
   
   static async getGamifiedDashboard(userId) {
+    // Silently sync treasure chest on every dashboard load (fail-safe)
+    await this.recalculateTreasureChest(userId);
+
     const [stats, rewards, challenges, achievements, quickButtons] = await Promise.all([
       this.getUserStats(userId),
       this.getUserRewards(userId, 5),

@@ -85,6 +85,10 @@ router.post('/', expenseValidation, async (req, res) => {
     // Track gamification (streaks, XP, loot drops)
     const gamification = await Gamification.trackExpense(req.user.id, amount, category);
 
+    // Update treasure chest (savings = income - expenses)
+    const chestResult = await Gamification.recalculateTreasureChest(req.user.id);
+    gamification.treasureChest = chestResult;
+
     // Update ship health based on spending
     const monthlyTotal = await Expense.getTotalByUserId(req.user.id, {
       startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -158,6 +162,9 @@ router.patch('/:id', expenseValidation, async (req, res) => {
       });
     }
 
+    // Update treasure chest after expense change
+    await Gamification.recalculateTreasureChest(req.user.id);
+
     res.json({
       success: true,
       message: 'Expense updated successfully.',
@@ -183,6 +190,9 @@ router.delete('/:id', async (req, res) => {
         message: 'Expense not found.'
       });
     }
+
+    // Update treasure chest after expense deletion
+    await Gamification.recalculateTreasureChest(req.user.id);
 
     res.json({
       success: true,

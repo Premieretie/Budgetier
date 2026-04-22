@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Income = require('../models/income');
+const Gamification = require('../models/gamification');
 const { authenticate, requireConsent } = require('../middleware/auth');
 const { incomeValidation, dateRangeValidation } = require('../middleware/validation');
 
@@ -77,10 +78,13 @@ router.post('/', incomeValidation, async (req, res) => {
       recurring: recurring || false,
     });
 
+    // Update treasure chest after income change
+    const chest = await Gamification.recalculateTreasureChest(req.user.id);
+
     res.status(201).json({
       success: true,
       message: 'Income entry created successfully.',
-      data: { income }
+      data: { income, treasureChest: chest }
     });
   } catch (error) {
     console.error('Create income error:', error);
@@ -111,6 +115,9 @@ router.patch('/:id', incomeValidation, async (req, res) => {
       });
     }
 
+    // Update treasure chest after income change
+    await Gamification.recalculateTreasureChest(req.user.id);
+
     res.json({
       success: true,
       message: 'Income entry updated successfully.',
@@ -136,6 +143,9 @@ router.delete('/:id', async (req, res) => {
         message: 'Income entry not found.'
       });
     }
+
+    // Update treasure chest after income deletion
+    await Gamification.recalculateTreasureChest(req.user.id);
 
     res.json({
       success: true,

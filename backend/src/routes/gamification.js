@@ -297,6 +297,48 @@ router.get('/challenges', async (req, res) => {
 });
 
 // ============================================
+// TREASURE CHEST
+// ============================================
+
+// GET current treasure chest status
+router.get('/treasure-chest', async (req, res) => {
+  try {
+    const stats = await Gamification.getUserStats(req.user.id);
+    const savings = parseFloat(stats.treasure_chest_amount || 0);
+    const milestone = 1000;
+    res.json({
+      success: true,
+      data: {
+        savings,
+        milestone,
+        progress: Math.min(100, (savings / milestone) * 100),
+        milestoneReached: savings >= milestone,
+      },
+    });
+  } catch (error) {
+    console.error('Treasure chest error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch treasure chest.' });
+  }
+});
+
+// POST recalculate treasure chest from real income/expense data (fail-safe sync)
+router.post('/treasure-chest/recalculate', async (req, res) => {
+  try {
+    const result = await Gamification.recalculateTreasureChest(req.user.id);
+    res.json({
+      success: true,
+      message: result.milestone
+        ? '🎉 Treasure secured, captain! $1,000 milestone reached!'
+        : 'Treasure chest recalculated.',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Treasure chest recalculate error:', error);
+    res.status(500).json({ success: false, message: 'Failed to recalculate treasure chest.' });
+  }
+});
+
+// ============================================
 // MANUAL REWARDS (ADMIN/DEBUG)
 // ============================================
 
