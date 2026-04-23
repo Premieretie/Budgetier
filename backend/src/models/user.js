@@ -19,7 +19,9 @@ class User {
 
   static async findByEmail(email) {
     const rows = await query(
-      'SELECT * FROM users WHERE email = $1',
+      `SELECT id, email, password_hash, first_name, last_name, currency,
+              privacy_consent AS consent_given, consent_date, created_at, updated_at, last_login
+       FROM users WHERE email = $1`,
       [email]
     );
     return rows[0] || null;
