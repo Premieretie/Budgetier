@@ -235,19 +235,28 @@ class Gamification {
     return this.updateUserStats(userId, { ship_health: newHealth });
   }
   
-  static async repairShip(userId, goldCost) {
+  // goldCost  — gold to spend
+  // healthToRestore — explicit HP to restore (optional; defaults to goldCost * 1 hp/gold)
+  static async repairShip(userId, goldCost, healthToRestore = null) {
     const stats = await this.getUserStats(userId);
-    
+
     if (stats.gold < goldCost) {
       return { success: false, message: 'Not enough gold!' };
     }
-    
-    const newHealth = Math.min(100, stats.ship_health + 20);
-    await this.updateUserStats(userId, { 
+
+    const hpGain = healthToRestore !== null ? healthToRestore : goldCost;
+    const newHealth = Math.min(100, stats.ship_health + hpGain);
+
+    await this.updateUserStats(userId, {
       ship_health: newHealth,
-      gold: stats.gold - goldCost 
+      gold: stats.gold - goldCost,
     });
-    
+
+    // Unlock SHIP_SAVED achievement when recovering from critical
+    if (stats.ship_health <= 30 && newHealth > 30) {
+      await this.unlockAchievement(userId, 'SHIP_SAVED');
+    }
+
     return { success: true, newHealth, remainingGold: stats.gold - goldCost };
   }
   

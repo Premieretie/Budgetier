@@ -89,16 +89,16 @@ router.get('/ship', async (req, res) => {
 // Repair ship (spend gold to restore health)
 router.post('/ship/repair', async (req, res) => {
   try {
-    const { goldAmount } = req.body;
+    const { goldAmount, healthToRestore } = req.body;
     
-    if (!goldAmount || goldAmount < 10) {
+    if (!goldAmount || goldAmount < 1) {
       return res.status(400).json({
         success: false,
-        message: 'Need at least 10 gold to repair!',
+        message: 'Need at least 1 gold to repair!',
       });
     }
     
-    const result = await Gamification.repairShip(req.user.id, goldAmount);
+    const result = await Gamification.repairShip(req.user.id, goldAmount, healthToRestore ?? null);
     
     if (!result.success) {
       return res.status(400).json(result);

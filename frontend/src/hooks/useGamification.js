@@ -110,10 +110,12 @@ export const useGamification = () => {
     }
   }, [fetchQuickButtons]);
 
-  // Repair ship
-  const repairShip = useCallback(async (goldAmount) => {
+  // Repair ship — goldAmount: gold spent, healthToRestore: explicit HP gain (for per-part repairs)
+  const repairShip = useCallback(async (goldAmount, healthToRestore = null) => {
     try {
-      const response = await api.post('/gamification/ship/repair', { goldAmount });
+      const payload = { goldAmount };
+      if (healthToRestore !== null) payload.healthToRestore = healthToRestore;
+      const response = await api.post('/gamification/ship/repair', payload);
       if (response.data?.success) {
         await fetchShip();
         await fetchStats();

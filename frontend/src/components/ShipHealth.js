@@ -75,7 +75,7 @@ const ShipHealth = ({ health = 100, status = 'smooth', message = '', onRepair, g
       {/* Repair Button */}
       {health < 100 && (
         <button
-          onClick={() => canAfford && onRepair && onRepair(repairCost)}
+          onClick={(e) => { e.stopPropagation(); canAfford && onRepair && onRepair(repairCost); }}
           disabled={!canAfford}
           className={`w-full py-2 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
             canAfford 

@@ -12,6 +12,7 @@ import { useGamification } from '../hooks/useGamification';
 import { useToast } from '../hooks/useToast';
 import TreasureChest from '../components/TreasureChest';
 import ShipHealth from '../components/ShipHealth';
+import ShipRepairModal from '../components/ShipRepairModal';
 import LevelProgress from '../components/LevelProgress';
 import StreakDisplay from '../components/StreakDisplay';
 import QuickAddExpense from '../components/QuickAddExpense';
@@ -46,6 +47,7 @@ const Dashboard = () => {
   } = useGamification();
 
   const [addingExpense, setAddingExpense] = useState(false);
+  const [showRepairModal, setShowRepairModal] = useState(false);
   const [viewMode, setViewMode] = useState('game'); // 'game' or 'charts'
   const [chartData, setChartData] = useState(null);
   const [chartLoading, setChartLoading] = useState(false);
@@ -79,15 +81,18 @@ const Dashboard = () => {
     }
   };
 
-  // Handle ship repair
-  const handleRepair = async (cost) => {
+  // Handle ship repair (called from both old button and new modal)
+  const handleRepair = async (goldCost, healthToRestore = null) => {
     try {
-      const result = await repairShip(cost);
-      if (result.success) {
-        success(`🔧 Ship repaired! Hull integrity restored!`);
+      const result = await repairShip(goldCost, healthToRestore);
+      if (result?.success) {
+        success(`🔧 Ship repaired! Hull integrity: ${result.data?.newHealth ?? ''}%`);
+        fetchDashboard();
       }
+      return result;
     } catch (err) {
       error('Could not repair the ship!');
+      throw err;
     }
   };
 
@@ -281,6 +286,16 @@ const Dashboard = () => {
           />
         </div>
 
+        {/* Ship Repair Modal */}
+        {showRepairModal && (
+          <ShipRepairModal
+            health={ship?.health || 100}
+            gold={stats?.gold || 0}
+            onClose={() => setShowRepairModal(false)}
+            onRepair={handleRepair}
+          />
+        )}
+
         {/* Charts upgrade prompt (shown when free user clicks Charts) */}
         {showChartUpgradePrompt && (
           <div className="mb-6">
@@ -316,8 +331,12 @@ const Dashboard = () => {
                 />
               </div>
 
-              {/* Ship Health */}
-              <div className="bg-white rounded-2xl p-4 shadow-md">
+              {/* Ship Health — click to open repair dock */}
+              <div
+                className="bg-white rounded-2xl p-4 shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setShowRepairModal(true)}
+                title="Open Ship Repair Dock"
+              >
                 <ShipHealth
                   health={ship?.health || 100}
                   status={ship?.status || 'smooth'}
@@ -325,6 +344,7 @@ const Dashboard = () => {
                   onRepair={handleRepair}
                   gold={stats?.gold || 0}
                 />
+                <p className="text-center text-xs text-amber-600 font-semibold mt-2">🔧 Tap to open repair dock</p>
               </div>
 
               {/* Streak */}
