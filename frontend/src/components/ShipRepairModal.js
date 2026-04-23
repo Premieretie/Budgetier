@@ -35,96 +35,183 @@ function ShipSVG({ health }) {
   const crack = (h) => Math.max(0, 1 - h / 50);
 
   return (
-    <svg viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-xs mx-auto drop-shadow-xl">
+    /*
+      Side-profile pirate ship facing RIGHT.
+      Canvas: 280 × 160
+      Waterline: y=118
+      Hull bottom: y=138
+      Deck top: y=98
+      Main mast base: x=120, top: y=18
+      Fore mast base: x=170, top: y=40
+    */
+    <svg viewBox="0 0 280 160" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-sm mx-auto drop-shadow-xl">
 
       {/* ── WATER ── */}
-      <ellipse cx="110" cy="162" rx="100" ry="12" fill="#0ea5e9" opacity="0.25" />
-      <ellipse cx="110" cy="162" rx="80"  ry="7"  fill="#38bdf8" opacity="0.3" />
+      <rect x="0" y="118" width="280" height="42" fill="#0c4a6e" opacity="0.15" rx="4"/>
+      <path d="M 0 122 Q 35 118 70 122 Q 105 126 140 122 Q 175 118 210 122 Q 245 126 280 122 L 280 160 L 0 160 Z"
+            fill="#0ea5e9" opacity="0.18"/>
+      <path d="M 0 126 Q 40 122 80 126 Q 120 130 160 126 Q 200 122 240 126 Q 260 128 280 126"
+            fill="none" stroke="#38bdf8" strokeWidth="1.5" opacity="0.4"/>
 
       {/* ── HULL ── */}
+      {/*
+        Hull is a boat-shaped polygon seen from the side.
+        Bow (right) curves up to a point, stern (left) has a raised transom.
+        Below waterline: dark shadow.
+      */}
       <g opacity={fade(hullDamage)}>
-        <path d="M 30 130 Q 110 155 190 130 L 180 145 Q 110 168 40 145 Z" fill="#92400e" />
-        <path d="M 35 125 L 185 125 L 180 138 Q 110 155 40 138 Z" fill="#b45309" />
-        {/* Hull planks */}
-        <line x1="70"  y1="125" x2="55"  y2="148" stroke="#78350f" strokeWidth="1.5" opacity="0.6" />
-        <line x1="110" y1="125" x2="110" y2="152" stroke="#78350f" strokeWidth="1.5" opacity="0.6" />
-        <line x1="150" y1="125" x2="165" y2="148" stroke="#78350f" strokeWidth="1.5" opacity="0.6" />
-        {/* Waterline */}
-        <path d="M 40 138 Q 110 155 180 138" fill="none" stroke="#1d4ed8" strokeWidth="2" opacity="0.4" />
+        {/* Below-waterline shadow */}
+        <path d="M 38 118 L 242 118 Q 258 118 264 128 L 38 135 Q 26 130 24 118 Z"
+              fill="#1e3a5f" opacity="0.35"/>
+
+        {/* Main hull body */}
+        <path d="M 30 118
+                 L 30 108
+                 Q 32 100 40 98
+                 L 230 98
+                 Q 248 98 262 108
+                 L 268 118
+                 Q 260 138 240 140
+                 L 48 140
+                 Q 30 138 30 118 Z"
+              fill="#92400e"/>
+
+        {/* Hull highlight (top strip) */}
+        <path d="M 40 98 L 230 98 Q 248 98 262 108 L 268 118 Q 248 102 230 100 L 40 100 Q 32 102 30 108 Z"
+              fill="#b45309"/>
+
+        {/* Hull planks (horizontal lines along the side) */}
+        {[104, 110, 116, 122, 128].map((y, i) => (
+          <line key={i}
+                x1={i === 4 ? 36 : 32} y1={y}
+                x2={i === 4 ? 244 : 260} y2={y}
+                stroke="#78350f" strokeWidth="1" opacity="0.35"/>
+        ))}
+
+        {/* Stern decoration (left side) */}
+        <rect x="28" y="100" width="14" height="38" rx="3" fill="#a16207" opacity="0.7"/>
+        <rect x="30" y="103" width="10" height="6"  rx="1" fill="#fbbf24" opacity="0.5"/>
+        <rect x="30" y="115" width="10" height="6"  rx="1" fill="#fbbf24" opacity="0.5"/>
+        <rect x="30" y="127" width="10" height="6"  rx="1" fill="#fbbf24" opacity="0.5"/>
+
+        {/* Cannon port */}
+        <rect x="80"  y="110" width="14" height="8" rx="2" fill="#1c1917" opacity="0.6"/>
+        <rect x="140" y="110" width="14" height="8" rx="2" fill="#1c1917" opacity="0.6"/>
+        <rect x="200" y="110" width="14" height="8" rx="2" fill="#1c1917" opacity="0.6"/>
+
+        {/* Bow (right) pointed prow */}
+        <path d="M 262 108 Q 274 112 274 118 Q 272 126 262 128 L 262 108 Z"
+              fill="#b45309"/>
+        <path d="M 268 118 L 280 118" stroke="#92400e" strokeWidth="2"/>
+
+        {/* Waterline stripe */}
+        <path d="M 32 118 L 266 118" stroke="#1d4ed8" strokeWidth="2" opacity="0.4"/>
       </g>
+
       {/* Hull crack overlay */}
       {hullDamage < 50 && (
         <g opacity={crack(hullDamage)}>
-          <path d="M 90 128 L 85 140 L 92 136 L 88 148" stroke="#ef4444" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-          <path d="M 125 127 L 130 139 L 122 137 L 127 150" stroke="#ef4444" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          <path d="M 100 105 L 95 118 L 103 114 L 98 128" stroke="#ef4444" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          <path d="M 180 106 L 186 118 L 178 115 L 184 130" stroke="#ef4444" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          {hullDamage < 25 && (
+            <path d="M 140 103 L 135 120 L 144 116 L 138 135" stroke="#ef4444" strokeWidth="2" fill="none" strokeLinecap="round"/>
+          )}
         </g>
       )}
 
       {/* ── DECK ── */}
       <g opacity={fade(deckDamage)}>
-        <rect x="38" y="112" width="144" height="15" rx="2" fill="#d97706" />
-        <rect x="38" y="112" width="144" height="4"  rx="1" fill="#f59e0b" opacity="0.5" />
-        {/* Deck boards */}
-        {[55,75,95,115,135,155].map(x => (
-          <line key={x} x1={x} y1="112" x2={x} y2="127" stroke="#92400e" strokeWidth="1" opacity="0.5" />
+        {/* Deck surface */}
+        <rect x="32" y="93" width="232" height="7" rx="2" fill="#d97706"/>
+        <rect x="32" y="93" width="232" height="3" rx="1" fill="#fbbf24" opacity="0.45"/>
+        {/* Deck planks (vertical lines across deck) */}
+        {[60, 90, 120, 150, 180, 210, 240].map(x => (
+          <line key={x} x1={x} y1="93" x2={x} y2="100" stroke="#92400e" strokeWidth="1" opacity="0.5"/>
         ))}
+        {/* Railing posts */}
+        {[50, 80, 110, 140, 170, 200, 230, 255].map(x => (
+          <line key={x} x1={x} y1="86" x2={x} y2="94" stroke="#a16207" strokeWidth="2" opacity="0.7"/>
+        ))}
+        {/* Top railing */}
+        <line x1="42" y1="87" x2="262" y2="87" stroke="#b45309" strokeWidth="2" opacity="0.8"/>
       </g>
-      {/* Deck damage */}
+      {/* Deck crack overlay */}
       {deckDamage < 50 && (
         <g opacity={crack(deckDamage)}>
-          <path d="M 100 113 L 96 125" stroke="#ef4444" strokeWidth="1.5" fill="none" />
-          <path d="M 140 113 L 145 125" stroke="#ef4444" strokeWidth="1.5" fill="none" />
+          <path d="M 120 93 L 116 100" stroke="#ef4444" strokeWidth="1.5" fill="none"/>
+          <path d="M 200 93 L 205 100" stroke="#ef4444" strokeWidth="1.5" fill="none"/>
         </g>
       )}
 
-      {/* ── MAST ── */}
+      {/* ── MAIN MAST (center) ── */}
       <g opacity={fade(mastDamage)}>
-        <rect x="107" y="20" width="6" height="95" rx="2" fill="#78350f" />
+        {/* Mast pole */}
+        <rect x="118" y="16" width="7" height="78" rx="2" fill="#78350f"/>
         {/* Crow's nest */}
-        <rect x="97" y="18" width="26" height="10" rx="3" fill="#92400e" />
+        <rect x="108" y="13" width="27" height="9" rx="3" fill="#92400e"/>
+        <rect x="111" y="10" width="21" height="5" rx="2" fill="#a16207"/>
         {/* Yard arms */}
-        <line x1="60"  y1="55" x2="160" y2="55" stroke="#78350f" strokeWidth="4" strokeLinecap="round" />
-        <line x1="75"  y1="80" x2="145" y2="80" stroke="#78350f" strokeWidth="3" strokeLinecap="round" />
-        {/* Rigging */}
-        <line x1="110" y1="22" x2="45"  y2="115" stroke="#a16207" strokeWidth="1" opacity="0.6" />
-        <line x1="110" y1="22" x2="175" y2="115" stroke="#a16207" strokeWidth="1" opacity="0.6" />
+        <line x1="68"  y1="40" x2="175" y2="40" stroke="#78350f" strokeWidth="5" strokeLinecap="round"/>
+        <line x1="78"  y1="62" x2="168" y2="62" stroke="#78350f" strokeWidth="4" strokeLinecap="round"/>
+        {/* Rigging lines */}
+        <line x1="121" y1="18" x2="42"  y2="87" stroke="#a16207" strokeWidth="1.2" opacity="0.55"/>
+        <line x1="121" y1="18" x2="200" y2="87" stroke="#a16207" strokeWidth="1.2" opacity="0.55"/>
+        <line x1="121" y1="18" x2="260" y2="90" stroke="#a16207" strokeWidth="1"   opacity="0.4"/>
       </g>
-      {/* Mast crack */}
+      {/* Mast crack overlay */}
       {mastDamage < 50 && (
         <g opacity={crack(mastDamage)}>
-          <path d="M 108 55 L 105 70 L 111 65 L 108 80" stroke="#ef4444" strokeWidth="1.5" fill="none"/>
+          <path d="M 119 45 L 115 58 L 123 53 L 118 68" stroke="#ef4444" strokeWidth="1.5" fill="none"/>
         </g>
       )}
+
+      {/* ── FORE MAST (right, shorter) ── */}
+      <g opacity={fade(mastDamage)}>
+        <rect x="198" y="38" width="5" height="56" rx="2" fill="#78350f"/>
+        {/* Yard arm */}
+        <line x1="168" y1="55" x2="230" y2="55" stroke="#78350f" strokeWidth="4" strokeLinecap="round"/>
+        {/* Rigging */}
+        <line x1="200" y1="40" x2="260" y2="88" stroke="#a16207" strokeWidth="1" opacity="0.45"/>
+        <line x1="200" y1="40" x2="140" y2="87" stroke="#a16207" strokeWidth="1" opacity="0.45"/>
+      </g>
 
       {/* ── SAILS ── */}
       <g opacity={fade(sailsDamage)}>
-        {/* Main sail */}
-        <path d="M 113 55 Q 168 68 165 105 L 113 105 Z" fill="#fef3c7" />
-        <path d="M 113 55 Q 168 68 165 105 L 113 105 Z" fill="none" stroke="#d97706" strokeWidth="1" opacity="0.5"/>
-        {/* Fore sail */}
-        <path d="M 107 55 Q 55 68 58 105 L 107 105 Z" fill="#fef9c3" />
-        <path d="M 107 55 Q 55 68 58 105 L 107 105 Z" fill="none" stroke="#d97706" strokeWidth="1" opacity="0.5"/>
+        {/* Main sail (billowing right — wind from left) */}
+        <path d="M 122 40 Q 172 50 170 88 L 122 88 Z" fill="#fef3c7"/>
+        <path d="M 122 40 Q 172 50 170 88 L 122 88 Z" fill="none" stroke="#d97706" strokeWidth="1" opacity="0.5"/>
+        {/* Main sail left side (smaller) */}
+        <path d="M 118 40 Q 75 52 78 88 L 118 88 Z" fill="#fef9c3"/>
+        <path d="M 118 40 Q 75 52 78 88 L 118 88 Z" fill="none" stroke="#d97706" strokeWidth="1" opacity="0.4"/>
         {/* Top sail */}
-        <path d="M 113 22 Q 148 30 148 52 L 113 52 Z" fill="#fde68a" />
-        <path d="M 107 22 Q 72 30 72 52 L 107 52 Z" fill="#fde68a" />
-        {/* Skull & crossbones flag */}
-        <rect x="108" y="5" width="14" height="12" rx="1" fill="#1f2937" />
-        <text x="115" y="15" textAnchor="middle" fontSize="9">☠️</text>
+        <path d="M 122 16 Q 152 24 150 38 L 122 38 Z" fill="#fde68a"/>
+        <path d="M 118 16 Q 90 24 92 38 L 118 38 Z"  fill="#fde68a"/>
+
+        {/* Fore mast sail */}
+        <path d="M 200 55 Q 232 63 228 88 L 200 88 Z" fill="#fef3c7" opacity="0.9"/>
+        <path d="M 199 55 Q 170 63 172 88 L 199 88 Z" fill="#fef9c3" opacity="0.8"/>
+
+        {/* Skull & crossbones flag at top of main mast */}
+        <rect x="106" y="2" width="15" height="11" rx="1" fill="#1f2937"/>
+        <text x="113" y="12" textAnchor="middle" fontSize="8">☠️</text>
+        {/* Flag ripple line */}
+        <path d="M 121 5 Q 128 7 121 10" fill="none" stroke="#374151" strokeWidth="1"/>
       </g>
-      {/* Sail tears */}
+
+      {/* Sail tear overlay */}
       {sailsDamage < 50 && (
         <g opacity={crack(sailsDamage)}>
-          <path d="M 138 70 L 132 85 M 148 80 L 143 95" stroke="#ef4444" strokeWidth="1.5" fill="none"/>
-          <path d="M 80 72 L 85 85 M 70 82 L 76 95"  stroke="#ef4444" strokeWidth="1.5" fill="none"/>
+          <path d="M 148 55 L 142 72 M 158 65 L 153 80" stroke="#ef4444" strokeWidth="1.5" fill="none"/>
+          <path d="M 88 58 L 93 73 M 80 68 L 85 82"    stroke="#ef4444" strokeWidth="1.5" fill="none"/>
         </g>
       )}
 
-      {/* Critical flame effect */}
+      {/* ── CRITICAL FIRE ── */}
       {health <= 20 && (
         <>
-          <text x="48" y="135" fontSize="14" className="animate-bounce" style={{animationDelay:'0ms'}}>🔥</text>
-          <text x="158" y="132" fontSize="12" className="animate-bounce" style={{animationDelay:'200ms'}}>🔥</text>
-          <text x="96"  y="130" fontSize="10" className="animate-bounce" style={{animationDelay:'400ms'}}>🔥</text>
+          <text x="56"  y="110" fontSize="16" style={{animationDelay:'0ms'}}   className="animate-bounce">🔥</text>
+          <text x="160" y="108" fontSize="13" style={{animationDelay:'200ms'}} className="animate-bounce">🔥</text>
+          <text x="220" y="110" fontSize="12" style={{animationDelay:'350ms'}} className="animate-bounce">🔥</text>
         </>
       )}
     </svg>
