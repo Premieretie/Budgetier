@@ -24,7 +24,7 @@ import GoldDisplay from '../components/GoldDisplay';
 import UpgradePrompt from '../components/UpgradePrompt';
 import useSubscription from '../hooks/useSubscription';
 import api from '../utils/api';
-import { formatCurrency } from '../utils/helpers';
+import { formatCurrency, getCategoryColor } from '../utils/helpers';
 
 const Dashboard = () => {
   const { success, error } = useToast();
@@ -167,7 +167,7 @@ const Dashboard = () => {
 
     const categoryLabels = chartData.charts.categoryBreakdown.map((c) => c.category);
     const categoryValues = chartData.charts.categoryBreakdown.map((c) => parseFloat(c.total));
-    const categoryColors = chartData.charts.categoryBreakdown.map((c) => c.color || '#6B7280');
+    const categoryColors = chartData.charts.categoryBreakdown.map((c) => c.color || getCategoryColor(c.category));
 
     return {
       lineChartData: [

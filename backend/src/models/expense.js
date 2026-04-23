@@ -85,26 +85,32 @@ class Expense {
 
   static async getCategoryBreakdown(userId, startDate, endDate) {
     let queryText = `
-      SELECT category, COALESCE(SUM(amount), 0) as total
-      FROM expenses 
-      WHERE user_id = $1
+      SELECT e.category,
+             COALESCE(SUM(e.amount), 0) AS total,
+             MAX(c.color) AS color,
+             MAX(c.icon)  AS icon
+      FROM expenses e
+      LEFT JOIN categories c
+        ON c.name = e.category
+       AND c.user_id = e.user_id
+      WHERE e.user_id = $1
     `;
     const values = [userId];
     let paramIndex = 1;
 
     if (startDate) {
       paramIndex++;
-      queryText += ` AND date >= $${paramIndex}`;
+      queryText += ` AND e.date >= $${paramIndex}`;
       values.push(startDate);
     }
 
     if (endDate) {
       paramIndex++;
-      queryText += ` AND date <= $${paramIndex}`;
+      queryText += ` AND e.date <= $${paramIndex}`;
       values.push(endDate);
     }
 
-    queryText += ' GROUP BY category ORDER BY total DESC';
+    queryText += ' GROUP BY e.category ORDER BY total DESC';
 
     const rows = await query(queryText, values);
     return rows;
