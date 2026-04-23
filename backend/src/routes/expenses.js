@@ -70,7 +70,7 @@ router.get('/:id', async (req, res) => {
 // Create expense
 router.post('/', expenseValidation, async (req, res) => {
   try {
-    const { amount, category, date, description, recurring, recurringFrequency } = req.body;
+    const { amount, category, date, description, recurring, recurringFrequency, buttonId } = req.body;
 
     const expense = await Expense.create({
       userId: req.user.id,
@@ -82,8 +82,13 @@ router.post('/', expenseValidation, async (req, res) => {
       recurringFrequency: recurringFrequency || 'monthly',
     });
 
-    // Track gamification (streaks, XP, loot drops)
-    const gamification = await Gamification.trackExpense(req.user.id, amount, category);
+    // Increment quick-button usage counter if this was a quick-add
+    if (buttonId) {
+      await Gamification.incrementButtonUsage(buttonId);
+    }
+
+    // Track gamification (streaks, XP, loot drops) — pass isQuickAdd flag
+    const gamification = await Gamification.trackExpense(req.user.id, amount, category, !!buttonId);
 
     // Update treasure chest (savings = income - expenses)
     const chestResult = await Gamification.recalculateTreasureChest(req.user.id);

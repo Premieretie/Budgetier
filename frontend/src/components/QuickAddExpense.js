@@ -19,12 +19,13 @@ const QuickAddExpense = ({ buttons, onAdd, onEdit, onDelete, loading }) => {
     setPressedButton(button.id);
     setTimeout(() => setPressedButton(null), 200);
     
-    // Add expense
+    // Add expense — include buttonId so backend flags it as quick_add
     await onAdd({
       amount: button.amount,
       category: button.category,
       description: button.name,
       date: new Date().toISOString().split('T')[0],
+      buttonId: button.id,
     });
   };
 

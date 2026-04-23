@@ -353,4 +353,92 @@ The Budgetier app has been transformed into an ADHD-friendly, pirate-themed gami
 
 ---
 
+---
+
+## 📐 Exact Formulas & Real Implementation Details
+
+### XP System
+- Logging any expense: **+2 XP**
+- Loot drop XP: **varies by rarity** (Common +2, Uncommon +8, Rare +25, Epic +50, Legendary +250)
+- XP thresholds (20 levels, exponential): `[0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250, 3850, 4500, 5200, 5950, 6750, 7600, 8500, 9450, 10000]`
+- Level-up gold bonus: `level × 25 gold` (additive, never overwrites balance)
+
+### Gold System
+- Base XP expense log: +0 gold (XP only, unless loot drops)
+- Streak bonus each new day: `+5 gold + min(streak × 5, 50)` → max +55 gold/day
+- Level-up: `+level × 25 gold`
+- Loot drops: Common 3–6g, Uncommon 12–20g, Rare 40–55g, Epic 40–150g, Legendary 500–1000g
+- Repair cost: **1 gold = 1 HP** restored
+
+### Ship Health
+- Under 50% budget used → **+10 HP**
+- 50–80% budget used → **±0 HP** (stable)
+- 80–100% budget used → **−5 HP**
+- Over budget → **−15 HP**
+- Repair economy: `missing_health × 1 gold` total; distributed Hull 40%, Sails 25%, Mast 20%, Deck 15%
+
+### Loot Probabilities
+- 30% base chance on each expense log
+- Roll distribution: `>0.95` Legendary, `>0.85` Epic, `>0.65` Rare, `>0.40` Uncommon, else Common
+
+### Streak
+- Updates once per calendar day (UTC)
+- Consecutive day: streak +1, gold +5 + streak_bonus
+- Gap > 1 day: streak resets to 1
+- Same day log: no change
+- Streak also evaluated on every dashboard load (handles login-only days)
+
+### Treasure Chest
+- `savings = max(0, total_income − total_expenses)` (all-time)
+- Recalculated after every income/expense mutation and on every dashboard load
+- Progress: `min(100, savings / 1000 × 100)%`
+- Milestone at $1,000 → triggers `BIG_SAVER` achievement
+
+### Daily Challenges
+| Challenge | Type | Target | Reward |
+|---|---|---|---|
+| Anchored Ship | no_spend | 0 expenses today | +10 gold, +5 XP |
+| Frugal Sailor | under_budget | Stay under 50% budget | +10 gold, +5 XP |
+| Keen Eye | log_expenses | Log 3 expenses | +10 gold, +5 XP |
+| Speed Demon | quick_add | Use Quick Add once | +10 gold, +5 XP |
+
+---
+
+## 🔍 System Integrity Improvements
+
+### Bugs Fixed (Apr 2026 Audit)
+
+| # | Bug | Fix Applied |
+|---|---|---|
+| 1 | `addXP` level-up gold overwrote gold balance instead of adding | Changed `updates.gold = stats.gold + (newLevel × 25)` — now always additive |
+| 2 | `generateDailyChallenges` cache-hit returned only `id` column | Added full `SELECT *` query on cache-hit path |
+| 3 | `updateChallengeProgress` reward_claimed race condition (double-grant risk) | Added pre-read state check; award only fires on `completed && !reward_claimed` |
+| 4 | `BUDGET_MASTER` achievement defined but never triggered | Wired into `trackExpense` — checks monthly spend vs budget after each expense |
+| 5 | `NO_SPEND_DAY` / Anchored Ship challenge never auto-evaluated | Added `evaluateNoSpendChallenge()` called from `getGamifiedDashboard` |
+| 6 | Streak only updated on expense log, not on login/dashboard load | `getGamifiedDashboard` now calls `updateStreak` — login-only days count |
+| 7 | StreakDisplay progress dots showed 0/7 on exact 7-day multiples | Fixed: `streak % 7 === 0 && streak > 0` now shows 7/7 filled |
+| 8 | Quick Add expenses never incremented Speed Demon challenge | `trackExpense` now accepts `isQuickAdd` flag; QuickAddExpense passes `buttonId` |
+| 9 | `incrementButtonUsage` never called on Quick Add | Now called in POST /expenses when `buttonId` present in body |
+| 10 | Treasure chest `addToTreasureChest()` was dead code — never called | Replaced with `recalculateTreasureChest()` — derives savings from real DB totals |
+
+### Logic Improvements
+- `getGamifiedDashboard` now returns fully consistent state: streak synced, chest synced, no-spend evaluated — all before data fetch
+- Repair system extended to support per-part health restoration with exact gold-to-HP mapping
+- `SHIP_SAVED` achievement fires when recovering from critical (<30 → >30 HP) via repair
+
+### Performance
+- `generateDailyChallenges` avoids 4 INSERT queries if challenges already exist for today
+- Treasure chest uses 2 parallel `SUM` queries instead of loading all rows
+
+---
+
+## ⚠️ Known Limitations
+
+- **Frugal Sailor challenge** (`under_budget`, target 50%) — `updateChallengeProgress` is not automatically called when the budget ratio changes; currently not auto-triggered. Requires manual wiring to the budget evaluation flow.
+- **`QUICK_ADD_MASTER` achievement** (Quick Add ×10) — defined in `ACHIEVEMENTS` but achievement check not yet wired (no counter on `quick_expense_buttons.usage_count` threshold check).
+- **Streak timezone** — streak uses UTC date from the server. Users in UTC+10 may see streak reset at 10am local time instead of midnight.
+- **`NO_SPEND_DAY` challenge** completes on first dashboard load with no spending, not at end of day — so a user who loads the dashboard at 9am then spends at 6pm will still receive the reward.
+
+---
+
 **🏴‍☠️ Ready to set sail, Captain!**

@@ -45,19 +45,25 @@ const StreakDisplay = ({ streak, longestStreak, message }) => {
       )}
       
       {/* Progress dots */}
-      <div className="flex gap-1 mt-3">
-        {[...Array(7)].map((_, i) => (
-          <div 
-            key={i}
-            className={`flex-1 h-1.5 rounded-full ${
-              i < (streak % 7 || 7) ? 'bg-white' : 'bg-white/30'
-            }`}
-          />
-        ))}
-      </div>
-      <p className="text-xs text-white/60 mt-1">
-        {7 - (streak % 7 || 7)} days to streak bonus!
-      </p>
+      {(() => {
+        const filled = streak === 0 ? 0 : (streak % 7 === 0 ? 7 : streak % 7);
+        const daysLeft = streak === 0 ? 7 : (7 - filled);
+        return (
+          <>
+            <div className="flex gap-1 mt-3">
+              {[...Array(7)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex-1 h-1.5 rounded-full ${i < filled ? 'bg-white' : 'bg-white/30'}`}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-white/60 mt-1">
+              {daysLeft === 0 ? '🔥 Streak bonus unlocked!' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} to streak bonus!`}
+            </p>
+          </>
+        );
+      })()}
     </div>
   );
 };

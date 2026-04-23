@@ -142,8 +142,8 @@ class Gamification {
     const updates = { xp: newXP };
     if (newLevel > stats.level) {
       updates.level = newLevel;
-      // Bonus gold for level up
-      updates.gold = stats.gold + (newLevel * 25);
+      // Bonus gold for level up — additive, not overwrite
+      updates.gold = Math.max(0, stats.gold) + (newLevel * 25);
     }
     
     return this.updateUserStats(userId, updates);
@@ -478,7 +478,13 @@ class Gamification {
       [userId, today]
     );
     
-    if (existing.length > 0) return existing;
+    if (existing.length > 0) {
+      // Return full rows, not just the id-only seed query result
+      return query(
+        `SELECT * FROM daily_challenges WHERE user_id = $1 AND date = $2 ORDER BY completed ASC, id ASC`,
+        [userId, today]
+      );
+    }
     
     const challenges = [
       { type: 'no_spend', title: 'Anchored Ship', description: 'Don\'t spend any gold today!', target_amount: 0 },
@@ -514,60 +520,105 @@ class Gamification {
   
   static async updateChallengeProgress(userId, challengeType, amount) {
     const today = new Date().toISOString().split('T')[0];
-    
+
+    // Read current state first to detect transition from incomplete → complete
+    const before = await query(
+      `SELECT * FROM daily_challenges WHERE user_id = $1 AND challenge_type = $2 AND date = $3`,
+      [userId, challengeType, today]
+    );
+    if (!before[0] || before[0].completed) return before[0] || null;
+
     const rows = await query(
-      `UPDATE daily_challenges 
+      `UPDATE daily_challenges
        SET current_amount = current_amount + $4,
            completed = CASE WHEN current_amount + $4 >= target_amount THEN TRUE ELSE completed END
        WHERE user_id = $1 AND challenge_type = $2 AND date = $3 AND completed = FALSE
        RETURNING *`,
       [userId, challengeType, today, amount]
     );
-    
-    if (rows[0] && rows[0].completed && !rows[0].reward_claimed) {
-      // Challenge just completed - grant rewards
-      await this.addGold(userId, rows[0].reward_gold);
-      await this.addXP(userId, rows[0].reward_xp);
-      
+
+    const updated = rows[0];
+    if (!updated) return null;
+
+    // Newly completed and reward not yet claimed
+    if (updated.completed && !updated.reward_claimed) {
+      await this.addGold(userId, updated.reward_gold);
+      await this.addXP(userId, updated.reward_xp);
       await query(
         `UPDATE daily_challenges SET reward_claimed = TRUE WHERE id = $1`,
-        [rows[0].id]
+        [updated.id]
       );
-      
-      return { ...rows[0], justCompleted: true };
+      return { ...updated, reward_claimed: true, justCompleted: true };
     }
-    
-    return rows[0] || null;
+
+    return updated;
   }
   
   // ============================================
   // EXPENSE TRACKING WITH GAMIFICATION
   // ============================================
   
-  static async trackExpense(userId, amount, category) {
+  static async trackExpense(userId, amount, category, isQuickAdd = false) {
     // Update streak
     await this.updateStreak(userId);
-    
+
     // Add XP for logging
     await this.addXP(userId, 2);
-    
+
     // Roll for loot
     const loot = await this.rollLoot(userId);
-    
-    // Update challenges
+
+    // Update challenges — log_expenses always, quick_add if applicable
     await this.updateChallengeProgress(userId, 'log_expenses', 1);
-    
+    if (isQuickAdd) {
+      await this.updateChallengeProgress(userId, 'quick_add', 1);
+    }
+
+    // Check BUDGET_MASTER: under budget for the entire current month so far
+    try {
+      const Budget = require('./budget');
+      const budgets = await Budget.findByUserId(userId);
+      if (budgets.length > 0) {
+        const start = new Date();
+        start.setDate(1);
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = new Date().toISOString().split('T')[0];
+        const { query: q } = require('../config/database');
+        const expRows = await q(
+          `SELECT COALESCE(SUM(amount),0) AS total FROM expenses WHERE user_id=$1 AND date>=$2 AND date<=$3`,
+          [userId, startStr, endStr]
+        );
+        const monthSpend = parseFloat(expRows[0].total);
+        const totalBudget = budgets.reduce((s, b) => s + parseFloat(b.amount), 0);
+        if (totalBudget > 0 && monthSpend <= totalBudget) {
+          await this.unlockAchievement(userId, 'BUDGET_MASTER');
+        }
+      }
+    } catch (_) { /* non-critical */ }
+
     // Check for first expense achievement
     const expenseCount = await query(
       `SELECT COUNT(*) as count FROM expenses WHERE user_id = $1`,
       [userId]
     );
-    
     if (parseInt(expenseCount[0].count) === 1) {
       await this.unlockAchievement(userId, 'FIRST_EXPENSE');
     }
-    
+
     return { loot, xp: 2, gold: loot ? loot.gold : 0 };
+  }
+
+  // Evaluate the "no_spend" (Anchored Ship) challenge.
+  // Called from getGamifiedDashboard to check if user spent $0 today.
+  static async evaluateNoSpendChallenge(userId) {
+    const today = new Date().toISOString().split('T')[0];
+    const rows = await query(
+      `SELECT COALESCE(SUM(amount),0) AS total FROM expenses WHERE user_id=$1 AND date=$2`,
+      [userId, today]
+    );
+    if (parseFloat(rows[0].total) === 0) {
+      await this.updateChallengeProgress(userId, 'no_spend', 1);
+    }
   }
   
   // ============================================
@@ -575,8 +626,14 @@ class Gamification {
   // ============================================
   
   static async getGamifiedDashboard(userId) {
-    // Silently sync treasure chest on every dashboard load (fail-safe)
+    // Sync streak (handles login-only days)
+    await this.updateStreak(userId);
+
+    // Silently sync treasure chest (fail-safe)
     await this.recalculateTreasureChest(userId);
+
+    // Evaluate no-spend challenge for today
+    await this.evaluateNoSpendChallenge(userId);
 
     const [stats, rewards, challenges, achievements, quickButtons] = await Promise.all([
       this.getUserStats(userId),
@@ -585,11 +642,11 @@ class Gamification {
       this.getAchievements(userId),
       this.getQuickButtons(userId),
     ]);
-    
+
     // Ship health status message
     let shipStatus = 'smooth';
     let shipMessage = 'Sailing smooth seas, Captain!';
-    
+
     if (stats.ship_health <= 30) {
       shipStatus = 'critical';
       shipMessage = '⚠️ Ship taking on water! Take action now!';
@@ -600,7 +657,7 @@ class Gamification {
       shipStatus = 'pristine';
       shipMessage = '⭐ Ship in perfect condition!';
     }
-    
+
     return {
       stats,
       ship: {
@@ -612,7 +669,7 @@ class Gamification {
       dailyChallenges: challenges,
       achievements: achievements.slice(0, 10),
       quickButtons,
-      treasureProgress: Math.min(100, (stats.treasure_chest_amount / 1000) * 100), // Percentage to $1000
+      treasureProgress: Math.min(100, (parseFloat(stats.treasure_chest_amount) / 1000) * 100),
     };
   }
 }
