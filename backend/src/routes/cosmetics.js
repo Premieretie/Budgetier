@@ -8,8 +8,8 @@ router.use(authenticate);
 // GET /api/cosmetics/shop - get all items with ownership/availability info
 router.get('/shop', async (req, res) => {
   try {
-    const items = await Cosmetic.getShopItems(req.user.id);
-    return res.json({ success: true, data: { items } });
+    const { items, userGold } = await Cosmetic.getShopItems(req.user.id);
+    return res.json({ success: true, data: { items, userGold } });
   } catch (err) {
     console.error('Cosmetics shop error:', err);
     return res.status(500).json({ success: false, message: 'Server error' });
@@ -50,6 +50,8 @@ router.post('/unlock/:key', async (req, res) => {
           ? 'Upgrade your ship to unlock this item!'
           : result.reason === 'insufficient_gold'
           ? `You need ${result.cost} gold but only have ${result.current}.`
+          : result.reason === 'already_owned'
+          ? 'You already own this item.'
           : 'Cannot unlock this item.',
         code: result.reason?.toUpperCase(),
         data: result,

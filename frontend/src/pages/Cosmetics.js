@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LockClosedIcon, CheckBadgeIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import useSubscription from '../hooks/useSubscription';
 import api from '../utils/api';
 
+const TYPE_ORDER = ['theme', 'chest'];
 const TYPE_LABELS = {
   theme: '🚢 Ship Themes',
   chest: '📦 Treasure Chests',
@@ -13,9 +14,11 @@ const TYPE_LABELS = {
 const ItemCard = ({ item, onUnlock, onEquip, isPremium }) => {
   const [loading, setLoading] = useState(false);
 
+  // FIX: gold items are only locked if the user can't afford them,
+  // not just because they're unowned
   const isLocked = !item.owned && (
     (item.unlock_method === 'premium' && !isPremium) ||
-    (item.unlock_method === 'gold' && !item.owned)
+    (item.unlock_method === 'gold' && item.canAfford === false)
   );
 
   const handleAction = async () => {
@@ -31,13 +34,14 @@ const ItemCard = ({ item, onUnlock, onEquip, isPremium }) => {
     }
   };
 
-  const colors = (() => {
+  const colors = useMemo(() => {
     try {
       if (!item.preview_colors) return {};
       if (typeof item.preview_colors === 'string') return JSON.parse(item.preview_colors);
       return item.preview_colors;
     } catch { return {}; }
-  })();
+  }, [item.preview_colors]);
+
   const bgStyle = colors.primary
     ? { background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary || colors.primary})` }
     : { background: `linear-gradient(135deg, ${colors.fill || '#f59e0b'}, ${colors.border || '#b45309'})` };
@@ -75,9 +79,13 @@ const ItemCard = ({ item, onUnlock, onEquip, isPremium }) => {
             <SparklesIcon className="w-3 h-3" /> Premium
           </span>
         )}
-        {item.unlock_method === 'gold' && (
-          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
-            🪙 {item.gold_cost?.toLocaleString()} gold
+        {item.unlock_method === 'gold' && !item.owned && (
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            item.canAfford === false
+              ? 'bg-red-50 text-red-600'
+              : 'bg-yellow-100 text-yellow-700'
+          }`}>
+            🪙 {item.gold_cost?.toLocaleString()} gold{item.canAfford === false ? ' (can\'t afford)' : ''}
           </span>
         )}
       </div>
@@ -105,7 +113,7 @@ const ItemCard = ({ item, onUnlock, onEquip, isPremium }) => {
       ) : (
         <button
           onClick={handleAction}
-          disabled={loading || !item.available}
+          disabled={loading || !item.available || item.canAfford === false}
           className="w-full text-xs font-semibold text-white bg-gray-800 hover:bg-gray-700 py-2 rounded-xl transition-colors disabled:opacity-40"
         >
           {loading ? 'Unlocking...' : item.unlock_method === 'gold' ? `Unlock for 🪙${item.gold_cost?.toLocaleString()}` : 'Unlock'}
@@ -119,6 +127,7 @@ const Cosmetics = () => {
   const { success, error } = useToast();
   const { isPremium } = useSubscription();
   const [items, setItems] = useState([]);
+  const [userGold, setUserGold] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState('theme');
 
@@ -128,6 +137,7 @@ const Cosmetics = () => {
       const res = await api.get('/cosmetics/shop');
       if (res.data?.success) {
         setItems(res.data.data.items);
+        setUserGold(res.data.data.userGold ?? null);
       }
     } catch (err) {
       error('Failed to load cosmetics shop');
@@ -145,6 +155,7 @@ const Cosmetics = () => {
       const res = await api.post(`/cosmetics/unlock/${key}`);
       if (res.data?.success) {
         success(res.data.message);
+        // Refetch to get updated gold balance + ownership
         fetchShop();
       } else {
         error(res.data?.message || 'Could not unlock item');
@@ -159,7 +170,19 @@ const Cosmetics = () => {
       const res = await api.post(`/cosmetics/equip/${key}`);
       if (res.data?.success) {
         success('Item equipped! ⚓');
-        fetchShop();
+        // Optimistic update — no full refetch needed for equip
+        setItems(prev => {
+          const target = prev.find(i => i.key === key);
+          const targetType = target?.type;
+          return prev.map(i => ({
+            ...i,
+            is_equipped: i.key === key
+              ? true
+              : i.type === targetType
+              ? false
+              : i.is_equipped,
+          }));
+        });
       } else {
         error(res.data?.message || 'Could not equip item');
       }
@@ -168,7 +191,14 @@ const Cosmetics = () => {
     }
   };
 
-  const typeKeys = [...new Set(items.map(i => i.type))];
+  // Deterministic tab order: known types first, then any extras alphabetically
+  const typeKeys = useMemo(() => {
+    const present = new Set(items.map(i => i.type));
+    const ordered = TYPE_ORDER.filter(t => present.has(t));
+    const extras = [...present].filter(t => !TYPE_ORDER.includes(t)).sort();
+    return [...ordered, ...extras];
+  }, [items]);
+
   const filtered = items.filter(i => i.type === activeType);
 
   return (
@@ -179,15 +209,22 @@ const Cosmetics = () => {
           <h1 className="page-title">Cosmetics Shop</h1>
           <p className="page-description">Customize your ship and treasure chest</p>
         </div>
-        {!isPremium && (
-          <Link
-            to="/pricing"
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-sm"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            Upgrade
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {userGold !== null && (
+            <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded-xl text-sm font-semibold text-yellow-800">
+              🪙 {userGold.toLocaleString()} gold
+            </div>
+          )}
+          {!isPremium && (
+            <Link
+              to="/pricing"
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-sm"
+            >
+              <SparklesIcon className="w-4 h-4" />
+              Upgrade
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Premium Banner */}
@@ -228,6 +265,8 @@ const Cosmetics = () => {
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-500"></div>
         </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-center text-gray-400 py-16">No items in this category yet.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((item) => (
