@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { XMarkIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
+import { useCosmeticStore } from '../hooks/useCosmeticStore';
 
 // ─────────────────────────────────────────────
 // SHIP PART DEFINITIONS
@@ -23,11 +24,18 @@ function getPartHealth(shipHealth, partKey) {
 
 // ─── SVG Ship ───────────────────────────────
 // Health-aware pirate ship SVG. Parts receive opacity/filter based on damage.
-function ShipSVG({ health }) {
+function ShipSVG({ health, theme = {} }) {
   const hullDamage  = getPartHealth(health, 'hull');
   const sailsDamage = getPartHealth(health, 'sails');
   const mastDamage  = getPartHealth(health, 'mast');
   const deckDamage  = getPartHealth(health, 'deck');
+
+  const hullColor  = theme.hullFill       || '#92400e';
+  const hullHl     = theme.hullHighlight  || '#b45309';
+  const sailColor  = theme.sailFill       || '#fef3c7';
+  const sailStroke = theme.sailStroke     || '#d97706';
+  const mastColor  = theme.mastFill       || '#78350f';
+  const waterColor = theme.waterFill      || '#0ea5e9';
 
   // Maps 0-100 health to an opacity 0.3–1.0 (damaged = faded)
   const fade = (h) => 0.3 + (h / 100) * 0.7;
@@ -49,9 +57,9 @@ function ShipSVG({ health }) {
       {/* ── WATER ── */}
       <rect x="0" y="118" width="280" height="42" fill="#0c4a6e" opacity="0.15" rx="4"/>
       <path d="M 0 122 Q 35 118 70 122 Q 105 126 140 122 Q 175 118 210 122 Q 245 126 280 122 L 280 160 L 0 160 Z"
-            fill="#0ea5e9" opacity="0.18"/>
+            fill={waterColor} opacity="0.25"/>
       <path d="M 0 126 Q 40 122 80 126 Q 120 130 160 126 Q 200 122 240 126 Q 260 128 280 126"
-            fill="none" stroke="#38bdf8" strokeWidth="1.5" opacity="0.4"/>
+            fill="none" stroke={waterColor} strokeWidth="1.5" opacity="0.5"/>
 
       {/* ── HULL ── */}
       {/*
@@ -74,11 +82,11 @@ function ShipSVG({ health }) {
                  Q 260 138 240 140
                  L 48 140
                  Q 30 138 30 118 Z"
-              fill="#92400e"/>
+              fill={hullColor}/>
 
         {/* Hull highlight (top strip) */}
         <path d="M 40 98 L 230 98 Q 248 98 262 108 L 268 118 Q 248 102 230 100 L 40 100 Q 32 102 30 108 Z"
-              fill="#b45309"/>
+              fill={hullHl}/>
 
         {/* Hull planks (horizontal lines along the side) */}
         {[104, 110, 116, 122, 128].map((y, i) => (
@@ -89,7 +97,7 @@ function ShipSVG({ health }) {
         ))}
 
         {/* Stern decoration (left side) */}
-        <rect x="28" y="100" width="14" height="38" rx="3" fill="#a16207" opacity="0.7"/>
+        <rect x="28" y="100" width="14" height="38" rx="3" fill={hullHl} opacity="0.7"/>
         <rect x="30" y="103" width="10" height="6"  rx="1" fill="#fbbf24" opacity="0.5"/>
         <rect x="30" y="115" width="10" height="6"  rx="1" fill="#fbbf24" opacity="0.5"/>
         <rect x="30" y="127" width="10" height="6"  rx="1" fill="#fbbf24" opacity="0.5"/>
@@ -101,7 +109,7 @@ function ShipSVG({ health }) {
 
         {/* Bow (right) pointed prow */}
         <path d="M 262 108 Q 274 112 274 118 Q 272 126 262 128 L 262 108 Z"
-              fill="#b45309"/>
+              fill={hullHl}/>
         <path d="M 268 118 L 280 118" stroke="#92400e" strokeWidth="2"/>
 
         {/* Waterline stripe */}
@@ -122,8 +130,8 @@ function ShipSVG({ health }) {
       {/* ── DECK ── */}
       <g opacity={fade(deckDamage)}>
         {/* Deck surface */}
-        <rect x="32" y="93" width="232" height="7" rx="2" fill="#d97706"/>
-        <rect x="32" y="93" width="232" height="3" rx="1" fill="#fbbf24" opacity="0.45"/>
+        <rect x="32" y="93" width="232" height="7" rx="2" fill={hullHl}/>
+        <rect x="32" y="93" width="232" height="3" rx="1" fill={sailColor} opacity="0.45"/>
         {/* Deck planks (vertical lines across deck) */}
         {[60, 90, 120, 150, 180, 210, 240].map(x => (
           <line key={x} x1={x} y1="93" x2={x} y2="100" stroke="#92400e" strokeWidth="1" opacity="0.5"/>
@@ -146,17 +154,17 @@ function ShipSVG({ health }) {
       {/* ── MAIN MAST (center) ── */}
       <g opacity={fade(mastDamage)}>
         {/* Mast pole */}
-        <rect x="118" y="16" width="7" height="78" rx="2" fill="#78350f"/>
+        <rect x="118" y="16" width="7" height="78" rx="2" fill={mastColor}/>
         {/* Crow's nest */}
-        <rect x="108" y="13" width="27" height="9" rx="3" fill="#92400e"/>
-        <rect x="111" y="10" width="21" height="5" rx="2" fill="#a16207"/>
+        <rect x="108" y="13" width="27" height="9" rx="3" fill={hullColor}/>
+        <rect x="111" y="10" width="21" height="5" rx="2" fill={hullHl}/>
         {/* Yard arms */}
-        <line x1="68"  y1="40" x2="175" y2="40" stroke="#78350f" strokeWidth="5" strokeLinecap="round"/>
-        <line x1="78"  y1="62" x2="168" y2="62" stroke="#78350f" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="68"  y1="40" x2="175" y2="40" stroke={mastColor} strokeWidth="5" strokeLinecap="round"/>
+        <line x1="78"  y1="62" x2="168" y2="62" stroke={mastColor} strokeWidth="4" strokeLinecap="round"/>
         {/* Rigging lines */}
-        <line x1="121" y1="18" x2="42"  y2="87" stroke="#a16207" strokeWidth="1.2" opacity="0.55"/>
-        <line x1="121" y1="18" x2="200" y2="87" stroke="#a16207" strokeWidth="1.2" opacity="0.55"/>
-        <line x1="121" y1="18" x2="260" y2="90" stroke="#a16207" strokeWidth="1"   opacity="0.4"/>
+        <line x1="121" y1="18" x2="42"  y2="87" stroke={hullHl} strokeWidth="1.2" opacity="0.55"/>
+        <line x1="121" y1="18" x2="200" y2="87" stroke={hullHl} strokeWidth="1.2" opacity="0.55"/>
+        <line x1="121" y1="18" x2="260" y2="90" stroke={hullHl} strokeWidth="1"   opacity="0.4"/>
       </g>
       {/* Mast crack overlay */}
       {mastDamage < 50 && (
@@ -167,29 +175,29 @@ function ShipSVG({ health }) {
 
       {/* ── FORE MAST (right, shorter) ── */}
       <g opacity={fade(mastDamage)}>
-        <rect x="198" y="38" width="5" height="56" rx="2" fill="#78350f"/>
+        <rect x="198" y="38" width="5" height="56" rx="2" fill={mastColor}/>
         {/* Yard arm */}
-        <line x1="168" y1="55" x2="230" y2="55" stroke="#78350f" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="168" y1="55" x2="230" y2="55" stroke={mastColor} strokeWidth="4" strokeLinecap="round"/>
         {/* Rigging */}
-        <line x1="200" y1="40" x2="260" y2="88" stroke="#a16207" strokeWidth="1" opacity="0.45"/>
-        <line x1="200" y1="40" x2="140" y2="87" stroke="#a16207" strokeWidth="1" opacity="0.45"/>
+        <line x1="200" y1="40" x2="260" y2="88" stroke={hullHl} strokeWidth="1" opacity="0.45"/>
+        <line x1="200" y1="40" x2="140" y2="87" stroke={hullHl} strokeWidth="1" opacity="0.45"/>
       </g>
 
       {/* ── SAILS ── */}
       <g opacity={fade(sailsDamage)}>
         {/* Main sail (billowing right — wind from left) */}
-        <path d="M 122 40 Q 172 50 170 88 L 122 88 Z" fill="#fef3c7"/>
-        <path d="M 122 40 Q 172 50 170 88 L 122 88 Z" fill="none" stroke="#d97706" strokeWidth="1" opacity="0.5"/>
+        <path d="M 122 40 Q 172 50 170 88 L 122 88 Z" fill={sailColor}/>
+        <path d="M 122 40 Q 172 50 170 88 L 122 88 Z" fill="none" stroke={sailStroke} strokeWidth="1" opacity="0.5"/>
         {/* Main sail left side (smaller) */}
-        <path d="M 118 40 Q 75 52 78 88 L 118 88 Z" fill="#fef9c3"/>
-        <path d="M 118 40 Q 75 52 78 88 L 118 88 Z" fill="none" stroke="#d97706" strokeWidth="1" opacity="0.4"/>
+        <path d="M 118 40 Q 75 52 78 88 L 118 88 Z" fill={sailColor} opacity="0.9"/>
+        <path d="M 118 40 Q 75 52 78 88 L 118 88 Z" fill="none" stroke={sailStroke} strokeWidth="1" opacity="0.4"/>
         {/* Top sail */}
-        <path d="M 122 16 Q 152 24 150 38 L 122 38 Z" fill="#fde68a"/>
-        <path d="M 118 16 Q 90 24 92 38 L 118 38 Z"  fill="#fde68a"/>
+        <path d="M 122 16 Q 152 24 150 38 L 122 38 Z" fill={sailColor} opacity="0.85"/>
+        <path d="M 118 16 Q 90 24 92 38 L 118 38 Z"  fill={sailColor} opacity="0.85"/>
 
         {/* Fore mast sail */}
-        <path d="M 200 55 Q 232 63 228 88 L 200 88 Z" fill="#fef3c7" opacity="0.9"/>
-        <path d="M 199 55 Q 170 63 172 88 L 199 88 Z" fill="#fef9c3" opacity="0.8"/>
+        <path d="M 200 55 Q 232 63 228 88 L 200 88 Z" fill={sailColor} opacity="0.9"/>
+        <path d="M 199 55 Q 170 63 172 88 L 199 88 Z" fill={sailColor} opacity="0.8"/>
 
         {/* Skull & crossbones flag at top of main mast */}
         <rect x="106" y="2" width="15" height="11" rx="1" fill="#1f2937"/>
@@ -274,6 +282,11 @@ function PartCard({ part, missing, gold, onRepair, repairing }) {
 }
 
 // ─── Main modal ──────────────────────────────
+function ShipWithTheme({ health }) {
+  const { getTheme } = useCosmeticStore();
+  return <ShipSVG health={health} theme={getTheme()} />;
+}
+
 export default function ShipRepairModal({ health = 100, gold = 0, onClose, onRepair }) {
   const [repairing, setRepairing] = useState(null); // key of part being repaired
   const [localHealth, setLocalHealth] = useState(health);
@@ -361,7 +374,7 @@ export default function ShipRepairModal({ health = 100, gold = 0, onClose, onRep
 
           {/* SVG Ship */}
           <div className="py-2">
-            <ShipSVG health={localHealth} />
+            <ShipWithTheme health={localHealth} />
           </div>
 
           {/* Health bar */}

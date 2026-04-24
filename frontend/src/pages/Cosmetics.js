@@ -3,6 +3,7 @@ import { LockClosedIcon, CheckBadgeIcon, SparklesIcon } from '@heroicons/react/2
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import useSubscription from '../hooks/useSubscription';
+import { useCosmeticStore } from '../hooks/useCosmeticStore';
 import api from '../utils/api';
 
 const TYPE_ORDER = ['theme', 'chest'];
@@ -126,6 +127,7 @@ const ItemCard = ({ item, onUnlock, onEquip, isPremium }) => {
 const Cosmetics = () => {
   const { success, error } = useToast();
   const { isPremium } = useSubscription();
+  const { setEquipped, syncEquipped } = useCosmeticStore();
   const [items, setItems] = useState([]);
   const [userGold, setUserGold] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -155,7 +157,7 @@ const Cosmetics = () => {
       const res = await api.post(`/cosmetics/unlock/${key}`);
       if (res.data?.success) {
         success(res.data.message);
-        // Refetch to get updated gold balance + ownership
+        // Refetch to get updated gold balance + ownership state
         fetchShop();
       } else {
         error(res.data?.message || 'Could not unlock item');
@@ -170,7 +172,7 @@ const Cosmetics = () => {
       const res = await api.post(`/cosmetics/equip/${key}`);
       if (res.data?.success) {
         success('Item equipped! ⚓');
-        // Optimistic update — no full refetch needed for equip
+        // Optimistic local state update
         setItems(prev => {
           const target = prev.find(i => i.key === key);
           const targetType = target?.type;
@@ -183,6 +185,9 @@ const Cosmetics = () => {
               : i.is_equipped,
           }));
         });
+        // Push to cosmetic store so theme/ship updates instantly site-wide
+        const target = items.find(i => i.key === key);
+        if (target) setEquipped(target.type, key);
       } else {
         error(res.data?.message || 'Could not equip item');
       }

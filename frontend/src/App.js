@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './hooks/useAuthStore';
 import { useThemeStore } from './hooks/useThemeStore';
+import { useCosmeticStore } from './hooks/useCosmeticStore';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
@@ -43,13 +44,18 @@ const RootRedirect = () => {
 };
 
 function App() {
-  const { initializeAuth, isLoading, requiresConsent } = useAuthStore();
+  const { initializeAuth, isLoading, requiresConsent, isAuthenticated } = useAuthStore();
   const { initializeTheme } = useThemeStore();
+  const { syncEquipped } = useCosmeticStore();
 
   useEffect(() => {
     initializeAuth();
     initializeTheme();
   }, [initializeAuth, initializeTheme]);
+
+  useEffect(() => {
+    if (isAuthenticated) syncEquipped();
+  }, [isAuthenticated, syncEquipped]);
 
   if (isLoading) {
     return (

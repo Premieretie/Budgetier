@@ -18,6 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import useSubscription from '../../hooks/useSubscription';
+import { useCosmeticStore } from '../../hooks/useCosmeticStore';
 
 const navigation = [
   { name: 'Captain\'s Log', href: '/dashboard', icon: MapIcon },
@@ -42,8 +43,13 @@ const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { logout } = useAuthStore();
   const { isPremium, loading: subLoading } = useSubscription();
+  const { getTheme } = useCosmeticStore();
+  const theme = getTheme();
 
   const isActive = (path) => location.pathname === path;
+
+  const activeNavClass = 'border-l-4 font-semibold leading-6 text-sm';
+  const inactiveNavClass = 'text-slate-600 hover:text-slate-900 font-semibold leading-6 text-sm';
 
   return (
     <>
@@ -66,19 +72,17 @@ const Sidebar = ({ isOpen, onClose }) => {
                       <NavLink
                         to={item.href}
                         className={({ isActive }) =>
-                          `group flex gap-x-3 rounded-lg p-2 text-sm font-semibold leading-6 ${
-                            isActive
-                              ? 'bg-gold-100 text-gold-800 border-l-4 border-gold-600'
-                              : 'text-slate-600 hover:bg-parchment-100 hover:text-slate-900'
-                          }`
+                          `group flex gap-x-3 rounded-lg p-2 ${isActive ? activeNavClass : inactiveNavClass}`
                         }
+                        style={({ isActive }) => isActive ? {
+                          backgroundColor: theme.primaryLight,
+                          color: theme.primaryText,
+                          borderLeftColor: theme.primary,
+                        } : {}}
                       >
                         <item.icon
-                          className={`h-6 w-6 shrink-0 ${
-                            isActive(item.href)
-                              ? 'text-gold-700'
-                              : 'text-slate-400 group-hover:text-gold-600'
-                          }`}
+                          className="h-6 w-6 shrink-0"
+                          style={{ color: isActive(item.href) ? theme.primary : undefined }}
                           aria-hidden="true"
                         />
                         {item.name}
@@ -191,19 +195,17 @@ const Sidebar = ({ isOpen, onClose }) => {
                   to={item.href}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 ${
-                      isActive
-                        ? 'bg-gold-100 text-gold-800 border-l-4 border-gold-600'
-                        : 'text-slate-600 hover:bg-parchment-100 hover:text-slate-900'
-                    }`
+                    `group flex gap-x-3 rounded-lg p-3 ${isActive ? activeNavClass : inactiveNavClass}`
                   }
+                  style={({ isActive }) => isActive ? {
+                    backgroundColor: theme.primaryLight,
+                    color: theme.primaryText,
+                    borderLeftColor: theme.primary,
+                  } : {}}
                 >
                   <item.icon
-                    className={`h-6 w-6 shrink-0 ${
-                      isActive(item.href)
-                        ? 'text-gold-700'
-                        : 'text-slate-400 group-hover:text-gold-600'
-                    }`}
+                    className="h-6 w-6 shrink-0"
+                    style={{ color: isActive(item.href) ? theme.primary : undefined }}
                   />
                   {item.name}
                 </NavLink>

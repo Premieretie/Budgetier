@@ -1,7 +1,11 @@
 import React from 'react';
 import { Ship, AlertTriangle, Wrench } from 'lucide-react';
+import { useCosmeticStore } from '../hooks/useCosmeticStore';
 
 const ShipHealth = ({ health = 100, status = 'smooth', message = '', onRepair, gold = 0 }) => {
+  const { getTheme } = useCosmeticStore();
+  const theme = getTheme();
+
   // Determine ship appearance based on health
   const getShipColor = () => {
     if (health <= 30) return 'text-red-600';
@@ -45,7 +49,7 @@ const ShipHealth = ({ health = 100, status = 'smooth', message = '', onRepair, g
             <p className="text-xs text-gray-600">{message}</p>
           </div>
         </div>
-        <Ship size={28} className={getShipColor()} />
+        <Ship size={28} className={getShipColor()} style={health > 60 ? { color: theme.primary } : {}} />
       </div>
 
       {/* Health Bar */}
