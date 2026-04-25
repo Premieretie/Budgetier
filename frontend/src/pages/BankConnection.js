@@ -19,6 +19,7 @@ const BankConnection = () => {
   const [status, setStatus] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [mobile, setMobile] = useState('');
 
   // Fetch connection status on mount
   useEffect(() => {
@@ -51,6 +52,13 @@ const BankConnection = () => {
   const handleConnect = async () => {
     setLoading(true);
     try {
+      // Validate mobile number
+      if (!mobile || mobile.trim().length < 10) {
+        error('Please enter a valid mobile number');
+        setLoading(false);
+        return;
+      }
+
       // Get user email from auth store or API
       const userRes = await api.get('/auth/me');
       const email = userRes.data?.data?.user?.email;
@@ -63,6 +71,7 @@ const BankConnection = () => {
 
       const res = await api.post('/banking/connect', {
         email,
+        mobile: mobile.trim(),
         redirectUrl: `${window.location.origin}/banking/callback`,
       });
 
@@ -350,6 +359,24 @@ const BankConnection = () => {
                 at any time. Disconnection removes our access to new transactions.
               </p>
             </div>
+
+            {/* Mobile Number Input */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Mobile Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                placeholder="+61 400 123 456"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Required by Basiq for bank connection security
+              </p>
+            </div>
+
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => {

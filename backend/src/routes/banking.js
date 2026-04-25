@@ -159,7 +159,7 @@ router.get('/status', async (req, res) => {
  */
 router.post('/connect', requireBasiq, async (req, res) => {
   try {
-    const { email, redirectUrl } = req.body;
+    const { email, mobile, redirectUrl } = req.body;
     
     if (!email) {
       return res.status(400).json({
@@ -168,10 +168,18 @@ router.post('/connect', requireBasiq, async (req, res) => {
       });
     }
 
+    if (!mobile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mobile number is required for bank connection',
+      });
+    }
+
     const result = await BasiqService.createConnectLink(
       req.user.id,
       email,
-      redirectUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/banking/callback`
+      redirectUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/banking/callback`,
+      mobile
     );
 
     res.json({

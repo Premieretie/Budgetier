@@ -175,13 +175,28 @@ class BasiqService {
   /**
    * Create a Basiq Connect link (URL for user to connect their bank)
    */
-  async createConnectLink(userId, email, redirectUrl) {
+  async createConnectLink(userId, email, redirectUrl, mobile) {
     try {
       // First ensure we have a Basiq user
       const userResult = await this.getOrCreateBasiqUser(userId, email);
       const basiqUserId = userResult.basiqUserId;
 
       const headers = await this.getHeaders();
+
+      // Basiq requires a mobile number on the user or in the auth link
+      // Update user with mobile if provided
+      if (mobile) {
+        try {
+          await axios.post(
+            `${this.apiUrl}/users/${basiqUserId}`,
+            { mobile },
+            { headers }
+          );
+          console.log('✅ Updated Basiq user with mobile');
+        } catch (mobileError) {
+          console.warn('⚠️ Failed to update mobile (continuing):', mobileError.message);
+        }
+      }
 
       const payload = {
         scope: 'server.scope',
