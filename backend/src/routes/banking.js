@@ -32,7 +32,88 @@ const requireBasiq = (req, res, next) => {
   next();
 };
 
-// All routes require authentication
+// ============================================
+// PUBLIC ROUTES (no authentication required)
+// ============================================
+
+/**
+ * GET /api/banking/callback
+ * Handle Basiq Connect callback after user connects their bank
+ * NOTE: This is a PUBLIC route - Basiq calls it directly without our auth token
+ */
+router.get('/callback', async (req, res) => {
+  if (!basiqAvailable) {
+    return res.status(503).json({
+      success: false,
+      message: 'Banking integration is not configured',
+    });
+  }
+
+  try {
+    const { connection_id, user_id } = req.query;
+
+    if (!connection_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Connection ID is required',
+      });
+    }
+
+    // Basiq passes their user_id in the callback - look up our user
+    if (!user_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required',
+      });
+    }
+
+    // Find our user by Basiq user_id
+    const userResult = await query(
+      'SELECT user_id FROM bank_connections WHERE basiq_user_id = $1',
+      [user_id]
+    );
+
+    if (userResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found for this Basiq connection',
+      });
+    }
+
+    const budgetierUserId = userResult[0].user_id;
+
+    // Handle the connection callback
+    const result = await BasiqService.handleConnectCallback(budgetierUserId, connection_id);
+
+    if (result.success) {
+      // Trigger gamification - reward for connecting bank
+      await Gamification.addXP(budgetierUserId, 50);
+      await Gamification.addGold(budgetierUserId, 25);
+      
+      res.json({
+        success: true,
+        message: 'Bank connected successfully! 🎉 (+50 XP, +25 Gold)',
+        data: result,
+      });
+    } else {
+      res.json({
+        success: false,
+        message: result.message || 'Connection not completed',
+        data: result,
+      });
+    }
+  } catch (error) {
+    console.error('Connect callback error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to complete bank connection',
+    });
+  }
+});
+
+// ============================================
+// PROTECTED ROUTES (authentication required)
+// ============================================
 router.use(authenticate);
 router.use(requireConsent);
 
@@ -109,8 +190,15 @@ router.post('/connect', requireBasiq, async (req, res) => {
 /**
  * GET /api/banking/callback
  * Handle Basiq Connect callback after user connects their bank
+ * NOTE: This is a PUBLIC route - Basiq calls it directly without our auth token
  */
-router.get('/callback', requireBasiq, async (req, res) => {
+router.get('/callback', async (req, res) => {
+  if (!basiqAvailable) {
+    return res.status(503).json({
+      success: false,
+      message: 'Banking integration is not configured',
+    });
+  }
   try {
     const { connection_id, user_id } = req.query;
 
@@ -121,13 +209,36 @@ router.get('/callback', requireBasiq, async (req, res) => {
       });
     }
 
+    // Basiq passes their user_id in the callback - look up our user
+    if (!user_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required',
+      });
+    }
+
+    // Find our user by Basiq user_id
+    const userResult = await query(
+      'SELECT user_id FROM bank_connections WHERE basiq_user_id = $1',
+      [user_id]
+    );
+
+    if (userResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found for this Basiq connection',
+      });
+    }
+
+    const budgetierUserId = userResult[0].user_id;
+
     // Handle the connection callback
-    const result = await BasiqService.handleConnectCallback(req.user.id, connection_id);
+    const result = await BasiqService.handleConnectCallback(budgetierUserId, connection_id);
 
     if (result.success) {
       // Trigger gamification - reward for connecting bank
-      await Gamification.addXP(req.user.id, 50);
-      await Gamification.addGold(req.user.id, 25);
+      await Gamification.addXP(budgetierUserId, 50);
+      await Gamification.addGold(budgetierUserId, 25);
       
       res.json({
         success: true,
