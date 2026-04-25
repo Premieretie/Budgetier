@@ -67,6 +67,8 @@ class BasiqService {
       this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
       
       console.log('✅ Basiq access token obtained');
+      console.log('🔑 Token preview:', this.accessToken?.substring(0, 15) + '...');
+      console.log('⏱️  Expires in:', response.data.expires_in, 'seconds');
       return this.accessToken;
     } catch (error) {
       console.error('❌ Failed to get Basiq access token:', error.response?.data || error.message);
@@ -75,10 +77,15 @@ class BasiqService {
   }
 
   /**
-   * Get headers for authenticated API calls
+   * Get headers for Basiq API calls
    */
   async getHeaders() {
     const token = await this.getAccessToken();
+    if (!token) {
+      throw new Error('Failed to obtain Basiq access token');
+    }
+    // Log token length for debugging (never log full token)
+    console.log(`🔑 Using Basiq token (length: ${token.length})`);
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -97,6 +104,10 @@ class BasiqService {
   async createBasiqUser(userId, email, mobile = null) {
     try {
       const headers = await this.getHeaders();
+      console.log('📤 Creating Basiq user with headers:', { 
+        auth: headers.Authorization?.substring(0, 20) + '...',
+        version: headers['basiq-version']
+      });
       
       const payload = {
         email: email,
