@@ -48,15 +48,14 @@ class BasiqService {
     }
 
     try {
-      // Basiq requires Basic auth with API_KEY: (note the trailing colon)
-      const credentials = Buffer.from(`${this.apiKey}:`).toString('base64');
-      
+      // Basiq API key is already base64 encoded (key:secret format)
+      // Use it directly in the Authorization header
       const response = await axios.post(
         `${this.apiUrl}/token`,
         {},
         {
           headers: {
-            'Authorization': `Basic ${credentials}`,
+            'Authorization': `Basic ${this.apiKey}`,
             'Content-Type': 'application/json',
             'basiq-version': '3.0',
           },
