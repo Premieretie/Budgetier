@@ -25,6 +25,7 @@ import DataExport from './pages/DataExport';
 import Landing from './pages/Landing';
 import Pricing from './pages/Pricing';
 import Cosmetics from './pages/Cosmetics';
+import BankConnection from './pages/BankConnection';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -94,6 +95,7 @@ function App() {
             <Route path="/data-export" element={<DataExport />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/cosmetics" element={<Cosmetics />} />
+            <Route path="/banking" element={<BankConnection />} />
           </Route>
         </Route>
 

@@ -22,6 +22,8 @@ const dashboardRoutes = require('./routes/dashboard');
 const gamificationRoutes = require('./routes/gamification');
 const subscriptionRoutes = require('./routes/subscriptions');
 const cosmeticsRoutes = require('./routes/cosmetics');
+const bankingRoutes = require('./routes/banking');
+const syncScheduler = require('./services/syncScheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -84,6 +86,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/gamification', gamificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/cosmetics', cosmeticsRoutes);
+app.use('/api/banking', bankingRoutes);
 
 // Root route - API info
 app.get('/', (req, res) => {
@@ -299,7 +302,10 @@ const server = app.listen(PORT, () => {
   console.log(`📡 API Base: ${BASE_URL}`);
   console.log(`💚 Health: ${BASE_URL}/api/health`);
   console.log(`🧪 Test: ${BASE_URL}/api/test`);
-  console.log(`�️  DB Test: ${BASE_URL}/api/db-test`);
+  console.log(`🗄️  DB Test: ${BASE_URL}/api/db-test`);
+
+  // Start automatic transaction sync scheduler
+  syncScheduler.start();
 });
 
 module.exports = { app, server };

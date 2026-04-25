@@ -334,6 +334,82 @@ async function initDb() {
       )
     `);
 
+    // ============================================
+    // BASIQ / OPEN BANKING TABLES
+    // ============================================
+
+    // Bank Connections - Links Budgetier users to Basiq users and bank connections
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bank_connections (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL UNIQUE,
+        basiq_user_id VARCHAR(255),
+        basiq_connection_id VARCHAR(255),
+        institution_id VARCHAR(100),
+        institution_name VARCHAR(255),
+        account_name VARCHAR(255),
+        connect_link_url TEXT,
+        connect_link_expiry TIMESTAMP,
+        status VARCHAR(50) DEFAULT 'not_connected',
+        error_message TEXT,
+        connected_at TIMESTAMP,
+        last_synced TIMESTAMP,
+        last_sync_error TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(basiq_connection_id)
+      )
+    `);
+
+    // Raw Basiq Transactions storage
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS basiq_transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL,
+        basiq_transaction_id VARCHAR(255) NOT NULL UNIQUE,
+        account_id VARCHAR(255),
+        connection_id VARCHAR(255),
+        amount DECIMAL(12, 2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'AUD',
+        description TEXT,
+        direction VARCHAR(20), -- 'credit' or 'debit'
+        status VARCHAR(50),
+        transaction_date DATE NOT NULL,
+        transaction_type VARCHAR(50),
+        category VARCHAR(100),
+        sub_category VARCHAR(100),
+        institution_name VARCHAR(255),
+        merchant_name VARCHAR(255),
+        merchant_business_name VARCHAR(255),
+        raw_data JSONB,
+        imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Add Basiq transaction reference to expenses table if not exists
+    try {
+      await client.query(`
+        ALTER TABLE expenses 
+        ADD COLUMN IF NOT EXISTS basiq_transaction_id VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'manual'
+      `);
+    } catch (e) {
+      console.log('Note: expenses columns may already exist');
+    }
+
+    // Add Basiq transaction reference to income table if not exists
+    try {
+      await client.query(`
+        ALTER TABLE income 
+        ADD COLUMN IF NOT EXISTS basiq_transaction_id VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS source_type VARCHAR(50) DEFAULT 'manual'
+      `);
+    } catch (e) {
+      console.log('Note: income columns may already exist');
+    }
+
     // Seed default cosmetic items
     const cosmeticItems = [
       ['default_ship', 'Classic Galleon', 'The trusty ship you started with', 'theme', '🚢', '{"primary":"#1e40af","secondary":"#f59e0b"}', 'default', 0, true],

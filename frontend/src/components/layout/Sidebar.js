@@ -15,6 +15,7 @@ import {
   FireIcon,
   SparklesIcon,
   CurrencyDollarIcon,
+  BuildingLibraryIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import useSubscription from '../../hooks/useSubscription';
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Quests', href: '/goals', icon: TrophyIcon },
   { name: 'Treasure Maps', href: '/budgets', icon: ChartPieIcon },
   { name: 'Cargo Types', href: '/categories', icon: TagIcon },
+  { name: 'Banking', href: '/banking', icon: BuildingLibraryIcon },
   { name: 'Cosmetics', href: '/cosmetics', icon: SparklesIcon },
 ];
 

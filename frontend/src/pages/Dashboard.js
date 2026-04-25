@@ -12,6 +12,7 @@ import { useGamification } from '../hooks/useGamification';
 import { useToast } from '../hooks/useToast';
 import TreasureChest from '../components/TreasureChest';
 import ShipHealth from '../components/ShipHealth';
+import BankConnectionStatus from '../components/BankConnectionStatus';
 import ShipRepairModal from '../components/ShipRepairModal';
 import LevelProgress from '../components/LevelProgress';
 import StreakDisplay from '../components/StreakDisplay';
@@ -346,6 +347,9 @@ const Dashboard = () => {
                 />
                 <p className="text-center text-xs text-amber-600 font-semibold mt-2">🔧 Tap to open repair dock</p>
               </div>
+
+              {/* Bank Connection */}
+              <BankConnectionStatus />
 
               {/* Streak */}
               <div className="bg-white rounded-2xl p-4 shadow-md">
