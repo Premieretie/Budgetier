@@ -5,11 +5,32 @@
 
 const express = require('express');
 const router = express.Router();
-const BasiqService = require('../models/basiq');
-const Gamification = require('../models/gamification');
-const Budget = require('../models/budget');
 const { authenticate, requireConsent } = require('../middleware/auth');
 const { query } = require('../config/database');
+
+// Conditionally load Basiq service
+let BasiqService;
+let basiqAvailable = false;
+try {
+  BasiqService = require('../models/basiq');
+  basiqAvailable = BasiqService.isConfigured();
+} catch (err) {
+  console.warn('⚠️ Basiq service not available:', err.message);
+}
+
+const Gamification = require('../models/gamification');
+const Budget = require('../models/budget');
+
+// Helper middleware to check if Basiq is configured
+const requireBasiq = (req, res, next) => {
+  if (!basiqAvailable) {
+    return res.status(503).json({
+      success: false,
+      message: 'Banking integration is not configured. Please contact support.',
+    });
+  }
+  next();
+};
 
 // All routes require authentication
 router.use(authenticate);
@@ -25,11 +46,22 @@ router.use(requireConsent);
  */
 router.get('/status', async (req, res) => {
   try {
+    if (!basiqAvailable) {
+      return res.json({
+        success: true,
+        data: {
+          isConnected: false,
+          isAvailable: false,
+          message: 'Banking integration is not configured',
+        },
+      });
+    }
+
     const status = await BasiqService.getConnectionStatus(req.user.id);
     
     res.json({
       success: true,
-      data: status,
+      data: { ...status, isAvailable: true },
     });
   } catch (error) {
     console.error('Get bank status error:', error);
@@ -44,7 +76,7 @@ router.get('/status', async (req, res) => {
  * POST /api/banking/connect
  * Create a Basiq connect link for the user
  */
-router.post('/connect', async (req, res) => {
+router.post('/connect', requireBasiq, async (req, res) => {
   try {
     const { email, redirectUrl } = req.body;
     
@@ -78,7 +110,7 @@ router.post('/connect', async (req, res) => {
  * GET /api/banking/callback
  * Handle Basiq Connect callback after user connects their bank
  */
-router.get('/callback', async (req, res) => {
+router.get('/callback', requireBasiq, async (req, res) => {
   try {
     const { connection_id, user_id } = req.query;
 
@@ -122,7 +154,7 @@ router.get('/callback', async (req, res) => {
  * POST /api/banking/disconnect
  * Disconnect bank connection
  */
-router.post('/disconnect', async (req, res) => {
+router.post('/disconnect', requireBasiq, async (req, res) => {
   try {
     const { connectionId } = req.body;
 
@@ -152,7 +184,7 @@ router.post('/disconnect', async (req, res) => {
  * GET /api/banking/connections
  * Get all bank connections for the user
  */
-router.get('/connections', async (req, res) => {
+router.get('/connections', requireBasiq, async (req, res) => {
   try {
     const result = await BasiqService.getUserConnections(req.user.id);
 
@@ -177,7 +209,7 @@ router.get('/connections', async (req, res) => {
  * POST /api/banking/sync
  * Sync transactions from all connected banks
  */
-router.post('/sync', async (req, res) => {
+router.post('/sync', requireBasiq, async (req, res) => {
   try {
     const result = await BasiqService.syncTransactions(req.user.id);
 
@@ -230,7 +262,7 @@ router.post('/sync', async (req, res) => {
  * GET /api/banking/transactions
  * Get recently imported Basiq transactions
  */
-router.get('/transactions', async (req, res) => {
+router.get('/transactions', requireBasiq, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
     const transactions = await BasiqService.getRecentImportedTransactions(req.user.id, limit);

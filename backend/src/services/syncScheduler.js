@@ -4,8 +4,20 @@
  * Runs every 6 hours by default
  */
 
-const cron = require('node-cron');
-const BasiqService = require('../models/basiq');
+let cron;
+try {
+  cron = require('node-cron');
+} catch (err) {
+  console.warn('⚠️ node-cron not available. Scheduled sync disabled.');
+}
+
+let BasiqService;
+try {
+  BasiqService = require('../models/basiq');
+} catch (err) {
+  console.warn('⚠️ BasiqService not available. Bank sync disabled.');
+}
+
 const Gamification = require('../models/gamification');
 const Budget = require('../models/budget');
 const { query } = require('../config/database');
@@ -21,6 +33,16 @@ class SyncScheduler {
    * Start the scheduled sync job
    */
   start() {
+    if (!cron) {
+      console.log('⏭️ Sync scheduler disabled (node-cron not available)');
+      return;
+    }
+
+    if (!BasiqService) {
+      console.log('⏭️ Sync scheduler disabled (BasiqService not available)');
+      return;
+    }
+
     if (this.task) {
       console.log('⚠️ Sync scheduler already running');
       return;
@@ -152,6 +174,10 @@ class SyncScheduler {
    * Sync a specific user immediately (manual sync)
    */
   async syncUser(userId) {
+    if (!BasiqService) {
+      throw new Error('BasiqService not available');
+    }
+
     try {
       const syncResult = await BasiqService.syncTransactions(userId);
       

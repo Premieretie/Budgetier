@@ -21,6 +21,13 @@ class BasiqService {
     this.tokenExpiry = null;
   }
 
+  /**
+   * Check if Basiq is properly configured
+   */
+  isConfigured() {
+    return !!BASIQ_API_KEY;
+  }
+
   // ============================================
   // AUTHENTICATION
   // ============================================
