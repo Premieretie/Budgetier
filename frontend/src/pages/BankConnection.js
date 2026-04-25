@@ -12,20 +12,25 @@ import {
 } from '@heroicons/react/24/outline';
 import api from '../utils/api';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../hooks/useAuth';
 
 const BankConnection = () => {
   const { success, error } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [mobile, setMobile] = useState('');
+  const [mobile, setMobile] = useState(user?.mobile || '');
 
-  // Fetch connection status on mount
+  // Fetch connection status on mount and update mobile from profile
   useEffect(() => {
     fetchStatus();
     fetchTransactions();
-  }, []);
+    if (user?.mobile) {
+      setMobile(user.mobile);
+    }
+  }, [user]);
 
   const fetchStatus = async () => {
     try {

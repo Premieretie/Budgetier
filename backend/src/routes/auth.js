@@ -163,7 +163,7 @@ router.get('/me', authenticate, async (req, res) => {
 // Update user profile
 router.patch('/me', authenticate, async (req, res) => {
   try {
-    const allowedUpdates = ['first_name', 'last_name', 'currency'];
+    const allowedUpdates = ['first_name', 'last_name', 'currency', 'mobile'];
     const updates = {};
     
     for (const key of allowedUpdates) {

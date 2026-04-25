@@ -21,6 +21,7 @@ const Settings = () => {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     currency: user?.currency || 'AUD',
+    mobile: user?.mobile || '',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -38,6 +39,7 @@ const Settings = () => {
         first_name: profileData.firstName,
         last_name: profileData.lastName,
         currency: profileData.currency,
+        mobile: profileData.mobile,
       });
       updateUser(response.data.data.user);
       success('Profile updated successfully');
@@ -195,6 +197,18 @@ const Settings = () => {
                     className="input bg-gray-100 cursor-not-allowed"
                   />
                   <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                </div>
+
+                <div>
+                  <label className="label">Mobile Number</label>
+                  <input
+                    type="tel"
+                    value={profileData.mobile}
+                    onChange={(e) => setProfileData({ ...profileData, mobile: e.target.value })}
+                    placeholder="+61 400 123 456"
+                    className="input"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Required for bank connection</p>
                 </div>
 
                 <div>
