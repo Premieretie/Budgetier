@@ -35,6 +35,7 @@ class BasiqService {
   /**
    * Get or refresh Basiq access token
    * Tokens expire after 60 minutes
+   * Basiq requires: Authorization: Basic base64(API_KEY:)
    */
   async getAccessToken() {
     // Return cached token if still valid (with 5 min buffer)
@@ -42,18 +43,22 @@ class BasiqService {
       return this.accessToken;
     }
 
+    if (!this.apiKey) {
+      throw new Error('BASIQ_API_KEY not configured');
+    }
+
     try {
+      // Basiq requires Basic auth with API_KEY: (note the trailing colon)
+      const credentials = Buffer.from(`${this.apiKey}:`).toString('base64');
+      
       const response = await axios.post(
         `${this.apiUrl}/token`,
         {},
         {
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${credentials}`,
+            'Content-Type': 'application/json',
             'basiq-version': '3.0',
-          },
-          auth: {
-            username: this.apiKey,
-            password: '',
           },
         }
       );
@@ -62,9 +67,10 @@ class BasiqService {
       // Token expires in 3600 seconds (1 hour)
       this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
       
+      console.log('✅ Basiq access token obtained');
       return this.accessToken;
     } catch (error) {
-      console.error('Failed to get Basiq access token:', error.response?.data || error.message);
+      console.error('❌ Failed to get Basiq access token:', error.response?.data || error.message);
       throw new Error('Basiq authentication failed');
     }
   }
