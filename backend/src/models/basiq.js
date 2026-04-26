@@ -343,6 +343,7 @@ class BasiqService {
 
   /**
    * Handle Basiq Connect callback
+   * Uses SERVER token - has full access per Basiq docs
    */
   async handleConnectCallback(userId, connectionId) {
     try {
@@ -360,17 +361,24 @@ class BasiqService {
 
       const basiqUserId = userResult[0].basiq_user_id;
 
-      // Get connection details using USER token
-      const userHeaders = await this.getUserHeaders(basiqUserId);
+      // Get connection details using SERVER token (simpler, avoids user token issues)
+      console.log('📡 Fetching connection details with SERVER token...');
+      const serverHeaders = await this.getServerHeaders();
       
       const response = await axios.get(
         `${this.apiUrl}/users/${basiqUserId}/connections/${connectionId}`,
-        { headers: userHeaders }
+        { headers: serverHeaders }
       );
 
       const connection = response.data;
       const institution = connection.institution;
       const accounts = connection.accounts || [];
+      
+      console.log('📊 Connection details:', {
+        institution: institution?.name,
+        accountCount: accounts.length,
+        accountNames: accounts.map(a => a.name)
+      });
 
       // Update connection in database
       await query(
@@ -399,6 +407,7 @@ class BasiqService {
         success: true,
         institution: institution?.name,
         accounts: accounts.length,
+        accountName: accounts[0]?.name,
       };
     } catch (error) {
       console.error('Handle callback error:', error.response?.data || error.message);
@@ -421,11 +430,11 @@ class BasiqService {
       }
 
       const basiqUserId = userResult[0].basiq_user_id;
-      const userHeaders = await this.getUserHeaders(basiqUserId);
+      const serverHeaders = await this.getServerHeaders();
 
       const response = await axios.get(
         `${this.apiUrl}/users/${basiqUserId}/connections`,
-        { headers: userHeaders }
+        { headers: serverHeaders }
       );
 
       return {
@@ -452,11 +461,11 @@ class BasiqService {
       }
 
       const basiqUserId = userResult[0].basiq_user_id;
-      const userHeaders = await this.getUserHeaders(basiqUserId);
+      const serverHeaders = await this.getServerHeaders();
 
       await axios.delete(
         `${this.apiUrl}/users/${basiqUserId}/connections/${connectionId}`,
-        { headers: userHeaders }
+        { headers: serverHeaders }
       );
 
       // Update database
@@ -508,8 +517,8 @@ class BasiqService {
         return { imported: 0, connections: 0 };
       }
 
-      // Get USER token for transaction fetching
-      const userHeaders = await this.getUserHeaders(basiqUserId);
+      // Get SERVER token for transaction fetching (server token has full access)
+      const serverHeaders = await this.getServerHeaders();
 
       // Build query params
       const params = new URLSearchParams();
@@ -521,7 +530,7 @@ class BasiqService {
 
       const response = await axios.get(
         `${this.apiUrl}/users/${basiqUserId}/transactions?${params}`,
-        { headers: userHeaders }
+        { headers: serverHeaders }
       );
 
       const transactions = response.data.data || [];
