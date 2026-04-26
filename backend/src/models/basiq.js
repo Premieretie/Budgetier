@@ -237,7 +237,7 @@ class BasiqService {
 
   /**
    * Create a Basiq Connect link (URL for user to connect their bank)
-   * FIXED: Now correctly uses USER token, not server token
+   * Uses SERVER token - per Basiq docs, server token has full access to all endpoints
    */
   async createConnectLink(userId, email, redirectUrl, mobile) {
     try {
@@ -265,23 +265,21 @@ class BasiqService {
         }
       }
 
-      // Step 3: Generate USER token (CRITICAL FIX)
-      console.log('🔑 Generating USER token for auth link...');
-      const userHeaders = await this.getUserHeaders(basiqUserId);
-
-      // Step 4: Create auth link with USER token (CRITICAL FIX)
-      console.log('🔗 Creating auth link with USER token...');
+      // Step 3: Create auth link with SERVER token (simplified approach)
+      // Per Basiq docs: "SERVER_ACCESS token can be used for all endpoints"
+      console.log('🔗 Creating auth link with SERVER token...');
+      const serverHeaders = await this.getServerHeaders();
       
       const payload = {
+        mobile: mobile,
         scope: 'server.scope',
-        userId: basiqUserId,
         redirect: redirectUrl,
       };
 
       const response = await axios.post(
         `${this.apiUrl}/users/${basiqUserId}/auth_link`,
         payload,
-        { headers: userHeaders }
+        { headers: serverHeaders }
       );
 
       const connectLink = response.data.links.self;
@@ -295,15 +293,7 @@ class BasiqService {
       };
     } catch (error) {
       console.error('❌ Create connect link error:', error.response?.data || error.message);
-      
-      // Enhanced error logging for token issues
-      const errorData = error.response?.data?.data?.[0];
-      if (errorData?.code === 'invalid-authorization-token') {
-        console.error('🚨 TOKEN ERROR: Using wrong token type for auth link creation');
-        console.error('   Auth links require USER token, not SERVER token');
-      }
-      
-      throw new Error(errorData?.title || errorData?.detail || 'Failed to create connect link');
+      throw new Error(error.response?.data?.data?.[0]?.title || error.response?.data?.data?.[0]?.detail || 'Failed to create connect link');
     }
   }
 
