@@ -3,8 +3,9 @@ const { Resend } = require('resend');
 // Initialize Resend with API key
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// From email address (must be verified in Resend dashboard)
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@budgetier.ink';
+// From email address
+// For Resend testing, use 'onboarding@resend.dev' or verify your own domain
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 /**
  * Send bank connect link email to user
