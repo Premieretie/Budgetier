@@ -1,6 +1,10 @@
 /**
  * Basiq Integration Service
  * Handles Open Banking connections, user management, and transaction syncing
+ * 
+ * ARCHITECTURE:
+ * - Server Token: Used for creating users, admin operations
+ * - User Token: Used for auth links, connections, transactions
  */
 
 const axios = require('axios');
@@ -17,8 +21,10 @@ class BasiqService {
     }
     this.apiUrl = BASIQ_API_URL;
     this.apiKey = BASIQ_API_KEY;
-    this.accessToken = null;
-    this.tokenExpiry = null;
+    
+    // Server-level token (for creating users, admin ops)
+    this.serverToken = null;
+    this.serverTokenExpiry = null;
   }
 
   /**
@@ -29,18 +35,18 @@ class BasiqService {
   }
 
   // ============================================
-  // AUTHENTICATION
+  // SERVER TOKEN MANAGEMENT
   // ============================================
 
   /**
-   * Get or refresh Basiq access token
-   * Tokens expire after 60 minutes
-   * Basiq requires: Authorization: Basic base64(API_KEY:)
+   * Get or refresh SERVER token
+   * Server token is used for: creating users, getting user info
    */
-  async getAccessToken() {
+  async getServerToken() {
     // Return cached token if still valid (with 5 min buffer)
-    if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry - 300000) {
-      return this.accessToken;
+    if (this.serverToken && this.serverTokenExpiry && Date.now() < this.serverTokenExpiry - 300000) {
+      console.log('🔑 Using cached SERVER token');
+      return this.serverToken;
     }
 
     if (!this.apiKey) {
@@ -48,8 +54,8 @@ class BasiqService {
     }
 
     try {
-      // Basiq API key is already base64 encoded (key:secret format)
-      // Use it directly in the Authorization header
+      console.log('🔄 Obtaining new SERVER token...');
+      
       const response = await axios.post(
         `${this.apiUrl}/token`,
         {},
@@ -62,32 +68,76 @@ class BasiqService {
         }
       );
 
-      this.accessToken = response.data.access_token;
-      // Token expires in 3600 seconds (1 hour)
-      this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
+      this.serverToken = response.data.access_token;
+      this.serverTokenExpiry = Date.now() + (response.data.expires_in * 1000);
       
-      console.log('✅ Basiq access token obtained');
-      console.log('🔑 Token preview:', this.accessToken?.substring(0, 15) + '...');
-      console.log('⏱️  Expires in:', response.data.expires_in, 'seconds');
-      return this.accessToken;
+      console.log('✅ SERVER token obtained:', this.serverToken?.substring(0, 10) + '...');
+      return this.serverToken;
     } catch (error) {
-      console.error('❌ Failed to get Basiq access token:', error.response?.data || error.message);
-      throw new Error('Basiq authentication failed');
+      console.error('❌ Failed to get SERVER token:', error.response?.data || error.message);
+      throw new Error('Basiq server authentication failed');
     }
   }
 
   /**
-   * Get headers for Basiq API calls
+   * Get headers with SERVER token
    */
-  async getHeaders() {
-    const token = await this.getAccessToken();
-    if (!token) {
-      throw new Error('Failed to obtain Basiq access token');
-    }
-    // Log token length for debugging (never log full token)
-    console.log(`🔑 Using Basiq token (length: ${token.length})`);
+  async getServerHeaders() {
+    const token = await this.getServerToken();
     return {
-      'Authorization': token,  // Basiq tokens are used directly without Bearer prefix
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'basiq-version': '3.0',
+    };
+  }
+
+  // ============================================
+  // USER TOKEN MANAGEMENT
+  // ============================================
+
+  /**
+   * Generate USER token for a specific Basiq user
+   * User token is used for: auth links, connections, transactions
+   */
+  async generateUserToken(basiqUserId) {
+    if (!basiqUserId) {
+      throw new Error('basiqUserId is required to generate user token');
+    }
+
+    try {
+      console.log(`🔄 Generating USER token for Basiq user: ${basiqUserId?.substring(0, 8)}...`);
+      
+      const headers = await this.getServerHeaders();
+      
+      const response = await axios.post(
+        `${this.apiUrl}/users/${basiqUserId}/token`,
+        {},
+        { headers }
+      );
+
+      const userToken = response.data.access_token;
+      console.log('✅ USER token generated:', userToken?.substring(0, 10) + '...');
+      
+      return userToken;
+    } catch (error) {
+      console.error('❌ Failed to generate USER token:', error.response?.data || error.message);
+      
+      // Check if this is an invalid-token error (likely using wrong token type)
+      if (error.response?.data?.data?.[0]?.code === 'invalid-authorization-token') {
+        console.error('🚨 CRITICAL: Server token rejected for user token generation');
+      }
+      
+      throw new Error('Failed to generate user token');
+    }
+  }
+
+  /**
+   * Get headers with USER token
+   */
+  async getUserHeaders(basiqUserId) {
+    const userToken = await this.generateUserToken(basiqUserId);
+    return {
+      'Authorization': `Bearer ${userToken}`,
       'Content-Type': 'application/json',
       'basiq-version': '3.0',
     };
@@ -98,20 +148,32 @@ class BasiqService {
   // ============================================
 
   /**
-   * Create a Basiq user for a Budgetier user
-   * One-to-one mapping
+   * Get or create Basiq user for a Budgetier user
    */
-  async createBasiqUser(userId, email, mobile = null) {
+  async getOrCreateBasiqUser(userId, email, mobile = null) {
     try {
-      const headers = await this.getHeaders();
-      console.log('📤 Creating Basiq user with headers:', { 
-        auth: headers.Authorization?.substring(0, 20) + '...',
-        version: headers['basiq-version']
-      });
+      // Check if user already has a Basiq user ID
+      const existing = await query(
+        'SELECT basiq_user_id FROM bank_connections WHERE user_id = $1',
+        [userId]
+      );
+
+      if (existing.length > 0 && existing[0].basiq_user_id) {
+        console.log(`✅ Found existing Basiq user: ${existing[0].basiq_user_id?.substring(0, 8)}...`);
+        return { 
+          basiqUserId: existing[0].basiq_user_id, 
+          isNew: false 
+        };
+      }
+
+      // Create new Basiq user
+      console.log('🆕 Creating new Basiq user...');
+      
+      const headers = await this.getServerHeaders();
       
       const payload = {
         email: email,
-        mobile: mobile || undefined,
+        mobile: mobile,
       };
 
       const response = await axios.post(
@@ -121,83 +183,46 @@ class BasiqService {
       );
 
       const basiqUserId = response.data.id;
+      console.log('✅ Basiq user created:', basiqUserId?.substring(0, 8) + '...');
 
-      // Store the mapping in our database
+      // Store in database
       await query(
-        `INSERT INTO bank_connections (user_id, basiq_user_id, status, created_at)
-         VALUES ($1, $2, 'user_created', CURRENT_TIMESTAMP)
-         ON CONFLICT (user_id) DO UPDATE SET
-           basiq_user_id = $2,
-           status = 'user_created',
-           updated_at = CURRENT_TIMESTAMP`,
+        `INSERT INTO bank_connections (user_id, basiq_user_id, status, created_at, updated_at)
+         VALUES ($1, $2, 'pending', NOW(), NOW())
+         ON CONFLICT (user_id) 
+         DO UPDATE SET basiq_user_id = $2, status = 'pending', updated_at = NOW()`,
         [userId, basiqUserId]
       );
 
-      return {
-        success: true,
-        basiqUserId,
-        data: response.data,
-      };
+      return { basiqUserId, isNew: true };
     } catch (error) {
-      console.error('Failed to create Basiq user:', error.response?.data || error.message);
+      console.error('❌ Failed to create/get Basiq user:', error.response?.data || error.message);
       throw new Error('Failed to create Basiq user');
     }
   }
 
-  /**
-   * Get or create Basiq user for Budgetier user
-   */
-  async getOrCreateBasiqUser(userId, email, mobile = null) {
-    // Check if we already have a Basiq user
-    const existing = await query(
-      'SELECT basiq_user_id FROM bank_connections WHERE user_id = $1',
-      [userId]
-    );
-
-    if (existing.length > 0 && existing[0].basiq_user_id) {
-      // Verify the user still exists in Basiq
-      try {
-        const headers = await this.getHeaders();
-        const response = await axios.get(
-          `${this.apiUrl}/users/${existing[0].basiq_user_id}`,
-          { headers }
-        );
-        return {
-          success: true,
-          basiqUserId: existing[0].basiq_user_id,
-          data: response.data,
-        };
-      } catch (error) {
-        // User might have been deleted, create new one
-        if (error.response?.status === 404) {
-          return this.createBasiqUser(userId, email, mobile);
-        }
-        throw error;
-      }
-    }
-
-    return this.createBasiqUser(userId, email, mobile);
-  }
-
   // ============================================
-  // BANK CONNECTION
+  // CONNECT LINK CREATION (FIXED)
   // ============================================
 
   /**
    * Create a Basiq Connect link (URL for user to connect their bank)
+   * FIXED: Now correctly uses USER token, not server token
    */
   async createConnectLink(userId, email, redirectUrl, mobile) {
     try {
-      // First ensure we have a Basiq user
-      const userResult = await this.getOrCreateBasiqUser(userId, email);
+      console.log(`🚀 Creating connect link for user ${userId}`);
+      
+      // Step 1: Ensure Basiq user exists (uses SERVER token)
+      const userResult = await this.getOrCreateBasiqUser(userId, email, mobile);
       const basiqUserId = userResult.basiqUserId;
+      
+      console.log(`📋 Budgetier user: ${userId} → Basiq user: ${basiqUserId?.substring(0, 8)}...`);
 
-      const headers = await this.getHeaders();
-
-      // Basiq requires a mobile number on the user or in the auth link
-      // Update user with mobile if provided
+      // Step 2: Update user with mobile if provided (uses SERVER token)
       if (mobile) {
         try {
+          const headers = await this.getServerHeaders();
           await axios.post(
             `${this.apiUrl}/users/${basiqUserId}`,
             { mobile },
@@ -206,10 +231,17 @@ class BasiqService {
           console.log('✅ Updated Basiq user with mobile');
         } catch (mobileError) {
           console.warn('⚠️ Failed to update mobile (continuing):', 
-            mobileError.response?.data || mobileError.message);
+            mobileError.response?.data?.data?.[0]?.detail || mobileError.message);
         }
       }
 
+      // Step 3: Generate USER token (CRITICAL FIX)
+      console.log('🔑 Generating USER token for auth link...');
+      const userHeaders = await this.getUserHeaders(basiqUserId);
+
+      // Step 4: Create auth link with USER token (CRITICAL FIX)
+      console.log('🔗 Creating auth link with USER token...');
+      
       const payload = {
         scope: 'server.scope',
         userId: basiqUserId,
@@ -219,156 +251,169 @@ class BasiqService {
       const response = await axios.post(
         `${this.apiUrl}/users/${basiqUserId}/auth_link`,
         payload,
-        { headers }
+        { headers: userHeaders }
       );
 
-      // Update connection status
-      await query(
-        `UPDATE bank_connections 
-         SET connect_link_url = $1,
-             connect_link_expiry = $2,
-             status = 'link_created',
-             updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = $3`,
-        [response.data.links.self, response.data.expiry, userId]
-      );
+      const connectLink = response.data.links.self;
+      console.log('✅ Connect link created:', connectLink?.substring(0, 50) + '...');
 
       return {
         success: true,
-        connectUrl: response.data.links.self,
-        expiry: response.data.expiry,
+        connectLink,
+        basiqUserId,
+        expiresIn: response.data.expiry,
       };
     } catch (error) {
-      console.error('Failed to create connect link:', error.response?.data || error.message);
-      throw new Error('Failed to create bank connection link');
+      console.error('❌ Create connect link error:', error.response?.data || error.message);
+      
+      // Enhanced error logging for token issues
+      const errorData = error.response?.data?.data?.[0];
+      if (errorData?.code === 'invalid-authorization-token') {
+        console.error('🚨 TOKEN ERROR: Using wrong token type for auth link creation');
+        console.error('   Auth links require USER token, not SERVER token');
+      }
+      
+      throw new Error(errorData?.title || errorData?.detail || 'Failed to create connect link');
+    }
+  }
+
+  // ============================================
+  // CONNECTION MANAGEMENT
+  // ============================================
+
+  /**
+   * Get connection status for a user
+   */
+  async getConnectionStatus(userId) {
+    try {
+      const result = await query(
+        `SELECT 
+          status,
+          basiq_user_id,
+          basiq_connection_id,
+          institution_name,
+          account_name,
+          last_synced,
+          created_at
+         FROM bank_connections
+         WHERE user_id = $1`,
+        [userId]
+      );
+
+      if (result.length === 0) {
+        return { isConnected: false, status: 'not_connected' };
+      }
+
+      const conn = result[0];
+      return {
+        isConnected: conn.status === 'connected',
+        status: conn.status,
+        basiqUserId: conn.basiq_user_id,
+        connectionId: conn.basiq_connection_id,
+        institution: conn.institution_name,
+        account: conn.account_name,
+        lastSynced: conn.last_synced,
+        connectedAt: conn.created_at,
+      };
+    } catch (error) {
+      console.error('Get connection status error:', error);
+      throw new Error('Failed to get connection status');
     }
   }
 
   /**
-   * Get all connections (bank accounts) for a user
+   * Handle Basiq Connect callback
    */
-  async getUserConnections(userId) {
+  async handleConnectCallback(userId, connectionId) {
     try {
-      const userRecord = await query(
+      console.log(`🔗 Handling callback for user ${userId}, connection ${connectionId?.substring(0, 8)}...`);
+      
+      // Get the Basiq user ID
+      const userResult = await query(
         'SELECT basiq_user_id FROM bank_connections WHERE user_id = $1',
         [userId]
       );
 
-      if (userRecord.length === 0 || !userRecord[0].basiq_user_id) {
-        return { success: true, connections: [] };
+      if (userResult.length === 0 || !userResult[0].basiq_user_id) {
+        throw new Error('Basiq user not found for this user');
       }
 
-      const basiqUserId = userRecord[0].basiq_user_id;
-      const headers = await this.getHeaders();
+      const basiqUserId = userResult[0].basiq_user_id;
 
+      // Get connection details using USER token
+      const userHeaders = await this.getUserHeaders(basiqUserId);
+      
       const response = await axios.get(
-        `${this.apiUrl}/users/${basiqUserId}/connections`,
-        { headers }
+        `${this.apiUrl}/users/${basiqUserId}/connections/${connectionId}`,
+        { headers: userHeaders }
       );
 
-      const connections = response.data.data || [];
+      const connection = response.data;
+      const institution = connection.institution;
+      const accounts = connection.accounts || [];
 
-      // Update local connection records
-      for (const conn of connections) {
-        await query(
-          `INSERT INTO bank_connections (
-            user_id, basiq_user_id, basiq_connection_id, institution_id,
-            institution_name, account_name, status, last_synced
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
-          ON CONFLICT (basiq_connection_id) DO UPDATE SET
-            institution_id = $4,
-            institution_name = $5,
-            account_name = $6,
-            status = $7,
-            updated_at = CURRENT_TIMESTAMP`,
-          [
-            userId,
-            basiqUserId,
-            conn.id,
-            conn.institution?.id || null,
-            conn.institution?.name || null,
-            conn.accounts?.[0]?.name || 'Connected Account',
-            conn.status,
-          ]
-        );
-      }
+      // Update connection in database
+      await query(
+        `UPDATE bank_connections 
+         SET status = 'connected',
+             basiq_connection_id = $1,
+             institution_id = $2,
+             institution_name = $3,
+             account_id = $4,
+             account_name = $5,
+             updated_at = NOW()
+         WHERE user_id = $6`,
+        [
+          connectionId,
+          institution?.id,
+          institution?.name,
+          accounts[0]?.id,
+          accounts[0]?.name,
+          userId,
+        ]
+      );
+
+      console.log('✅ Connection saved:', institution?.name);
 
       return {
         success: true,
-        connections: connections.map(c => ({
-          id: c.id,
-          status: c.status,
-          institution: c.institution,
-          accounts: c.accounts || [],
-        })),
+        institution: institution?.name,
+        accounts: accounts.length,
       };
     } catch (error) {
-      console.error('Failed to get user connections:', error.response?.data || error.message);
-      throw new Error('Failed to fetch bank connections');
+      console.error('Handle callback error:', error.response?.data || error.message);
+      throw new Error('Failed to complete connection');
     }
   }
 
   /**
-   * Handle Basiq Connect callback - validate connection success
+   * Get all connections for a user
    */
-  async handleConnectCallback(userId, connectionId) {
+  async getUserConnections(userId) {
     try {
-      // Get connection details from Basiq
-      const headers = await this.getHeaders();
-      const response = await axios.get(
-        `${this.apiUrl}/connections/${connectionId}`,
-        { headers }
+      const userResult = await query(
+        'SELECT basiq_user_id FROM bank_connections WHERE user_id = $1',
+        [userId]
       );
 
-      const connection = response.data;
-
-      if (connection.status === 'active') {
-        // Update our records
-        await query(
-          `UPDATE bank_connections
-           SET basiq_connection_id = $1,
-               institution_id = $2,
-               institution_name = $3,
-               account_name = $4,
-               status = 'connected',
-               connected_at = CURRENT_TIMESTAMP,
-               updated_at = CURRENT_TIMESTAMP
-           WHERE user_id = $5`,
-          [
-            connectionId,
-            connection.institution?.id || null,
-            connection.institution?.name || null,
-            connection.accounts?.[0]?.name || 'Connected Account',
-            userId,
-          ]
-        );
-
-        // Trigger initial sync
-        await this.syncTransactions(userId, connectionId);
-
-        return {
-          success: true,
-          status: 'connected',
-          institution: connection.institution,
-        };
-      } else {
-        await query(
-          `UPDATE bank_connections
-           SET status = $1,
-               updated_at = CURRENT_TIMESTAMP
-           WHERE user_id = $2`,
-          [connection.status, userId]
-        );
-
-        return {
-          success: false,
-          status: connection.status,
-          message: `Connection status: ${connection.status}`,
-        };
+      if (userResult.length === 0 || !userResult[0].basiq_user_id) {
+        return { connections: [] };
       }
+
+      const basiqUserId = userResult[0].basiq_user_id;
+      const userHeaders = await this.getUserHeaders(basiqUserId);
+
+      const response = await axios.get(
+        `${this.apiUrl}/users/${basiqUserId}/connections`,
+        { headers: userHeaders }
+      );
+
+      return {
+        connections: response.data.data || [],
+      };
     } catch (error) {
-      console.error('Failed to handle connect callback:', error.response?.data || error.message);
-      throw new Error('Failed to validate bank connection');
+      console.error('Get connections error:', error.response?.data || error.message);
+      throw new Error('Failed to fetch connections');
     }
   }
 
@@ -377,369 +422,272 @@ class BasiqService {
    */
   async disconnectConnection(userId, connectionId) {
     try {
-      const headers = await this.getHeaders();
-      await axios.delete(
-        `${this.apiUrl}/connections/${connectionId}`,
-        { headers }
+      const userResult = await query(
+        'SELECT basiq_user_id FROM bank_connections WHERE user_id = $1',
+        [userId]
       );
 
-      // Update our records
+      if (userResult.length === 0 || !userResult[0].basiq_user_id) {
+        throw new Error('No Basiq user found');
+      }
+
+      const basiqUserId = userResult[0].basiq_user_id;
+      const userHeaders = await this.getUserHeaders(basiqUserId);
+
+      await axios.delete(
+        `${this.apiUrl}/users/${basiqUserId}/connections/${connectionId}`,
+        { headers: userHeaders }
+      );
+
+      // Update database
       await query(
-        `UPDATE bank_connections
+        `UPDATE bank_connections 
          SET status = 'disconnected',
              basiq_connection_id = NULL,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = $1 AND basiq_connection_id = $2`,
-        [userId, connectionId]
+             updated_at = NOW()
+         WHERE user_id = $1`,
+        [userId]
       );
 
-      return { success: true, message: 'Bank connection removed' };
+      return { success: true, message: 'Bank disconnected successfully' };
     } catch (error) {
-      console.error('Failed to disconnect:', error.response?.data || error.message);
+      console.error('Disconnect error:', error.response?.data || error.message);
       throw new Error('Failed to disconnect bank');
     }
   }
 
   // ============================================
-  // TRANSACTIONS
+  // TRANSACTION SYNCING
   // ============================================
 
   /**
-   * Fetch transactions from Basiq
+   * Sync transactions for a user
    */
-  async fetchTransactions(userId, connectionId, options = {}) {
+  async syncTransactions(userId, options = {}) {
+    const { since, limit = 100 } = options;
+    
     try {
-      const { since, limit = 100, accountId } = options;
-
-      const headers = await this.getHeaders();
+      console.log(`🔄 Syncing transactions for user ${userId}`);
       
-      let url = `${this.apiUrl}/users/${await this.getBasiqUserId(userId)}/transactions`;
+      const userResult = await query(
+        `SELECT basiq_user_id, basiq_connection_id, last_synced 
+         FROM bank_connections 
+         WHERE user_id = $1 AND status = 'connected'`,
+        [userId]
+      );
+
+      if (userResult.length === 0 || !userResult[0].basiq_user_id) {
+        console.log('ℹ️ No active bank connection found');
+        return { imported: 0, connections: 0 };
+      }
+
+      const { basiq_user_id: basiqUserId, basiq_connection_id: connectionId, last_synced: lastSynced } = userResult[0];
+
+      if (!connectionId) {
+        console.log('ℹ️ No connection ID found');
+        return { imported: 0, connections: 0 };
+      }
+
+      // Get USER token for transaction fetching
+      const userHeaders = await this.getUserHeaders(basiqUserId);
+
+      // Build query params
       const params = new URLSearchParams();
+      params.append('limit', limit.toString());
       
-      if (since) params.append('filter', `transactionDate>'${since}'`);
-      if (limit) params.append('limit', limit.toString());
-      if (accountId) params.append('account', accountId);
+      // Use provided since date, or last synced, or default to 30 days ago
+      const sinceDate = since || lastSynced || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      params.append('filter', `transactionDate>'${sinceDate}'`);
 
-      if (params.toString()) {
-        url += `?${params.toString()}`;
+      const response = await axios.get(
+        `${this.apiUrl}/users/${basiqUserId}/transactions?${params}`,
+        { headers: userHeaders }
+      );
+
+      const transactions = response.data.data || [];
+      console.log(`📥 Found ${transactions.length} transactions from Basiq`);
+
+      // Import transactions
+      let imported = 0;
+      
+      for (const tx of transactions) {
+        try {
+          const importedId = await this.importTransaction(userId, tx);
+          if (importedId) imported++;
+        } catch (importError) {
+          console.warn('Failed to import transaction:', tx.id, importError.message);
+        }
       }
 
-      const response = await axios.get(url, { headers });
+      // Update last sync time
+      await query(
+        'UPDATE bank_connections SET last_synced = NOW(), last_sync_error = NULL WHERE user_id = $1',
+        [userId]
+      );
+
+      console.log(`✅ Imported ${imported} new transactions`);
 
       return {
-        success: true,
-        transactions: response.data.data || [],
-        links: response.data.links,
+        imported,
+        connections: 1,
+        totalFetched: transactions.length,
       };
     } catch (error) {
-      console.error('Failed to fetch transactions:', error.response?.data || error.message);
-      throw new Error('Failed to fetch transactions');
+      console.error('Sync transactions error:', error.response?.data || error.message);
+      
+      // Update sync error
+      await query(
+        'UPDATE bank_connections SET last_sync_error = $1 WHERE user_id = $2',
+        [error.message, userId]
+      );
+      
+      throw new Error('Failed to sync transactions');
     }
   }
 
   /**
-   * Get Basiq user ID for a Budgetier user
+   * Import a single transaction
    */
-  async getBasiqUserId(userId) {
-    const result = await query(
-      'SELECT basiq_user_id FROM bank_connections WHERE user_id = $1',
-      [userId]
+  async importTransaction(userId, transaction) {
+    const tx = transaction;
+    
+    // Check if already imported
+    const existing = await query(
+      'SELECT id FROM basiq_transactions WHERE basiq_transaction_id = $1',
+      [tx.id]
     );
 
-    if (result.length === 0 || !result[0].basiq_user_id) {
-      throw new Error('No Basiq user found for this user');
+    if (existing.length > 0) {
+      return null; // Already exists
     }
 
-    return result[0].basiq_user_id;
-  }
+    // Determine transaction type
+    const amount = parseFloat(tx.amount);
+    const isCredit = amount > 0;
+    const absAmount = Math.abs(amount);
 
-  /**
-   * Sync transactions for a user - main entry point for scheduled syncs
-   */
-  async syncTransactions(userId, specificConnectionId = null) {
-    try {
-      // Get connection(s) to sync
-      let connectionsQuery = 
-        'SELECT * FROM bank_connections WHERE user_id = $1 AND status = $2';
-      let params = [userId, 'connected'];
-
-      if (specificConnectionId) {
-        connectionsQuery += ' AND basiq_connection_id = $3';
-        params.push(specificConnectionId);
-      }
-
-      const connections = await query(connectionsQuery, params);
-
-      if (connections.length === 0) {
-        return { success: true, imported: 0, message: 'No active bank connections' };
-      }
-
-      let totalImported = 0;
-      const results = [];
-
-      for (const conn of connections) {
-        // Get last sync time for incremental sync
-        const lastSync = conn.last_synced || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(); // Default 90 days back
-
-        const txResult = await this.fetchTransactions(userId, conn.basiq_connection_id, {
-          since: lastSync,
-          limit: 500,
-        });
-
-        const imported = await this.importTransactions(userId, txResult.transactions);
-        totalImported += imported.count;
-
-        // Update last synced time
-        await query(
-          'UPDATE bank_connections SET last_synced = CURRENT_TIMESTAMP WHERE id = $1',
-          [conn.id]
-        );
-
-        results.push({
-          connectionId: conn.basiq_connection_id,
-          institution: conn.institution_name,
-          imported: imported.count,
-          newTransactions: imported.transactions,
-        });
-      }
-
-      return {
-        success: true,
-        imported: totalImported,
-        connections: results,
-      };
-    } catch (error) {
-      console.error('Failed to sync transactions:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Import transactions into Budgetier
-   * Converts Basiq transactions to Budgetier expenses/income
-   */
-  async importTransactions(userId, transactions) {
-    const imported = [];
-    let count = 0;
-
-    for (const tx of transactions) {
-      try {
-        // Skip if already imported (using Basiq transaction ID)
-        const existing = await query(
-          'SELECT id FROM basiq_transactions WHERE basiq_transaction_id = $1',
-          [tx.id]
-        );
-
-        if (existing.length > 0) {
-          continue; // Already imported
-        }
-
-        // Store raw Basiq transaction
-        await query(
-          `INSERT INTO basiq_transactions (
-            user_id, basiq_transaction_id, account_id, connection_id,
-            amount, currency, description, direction, status,
-            transaction_date, transaction_type, category, 
-            institution_name, merchant_name, raw_data
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-          ON CONFLICT (basiq_transaction_id) DO NOTHING`,
-          [
-            userId,
-            tx.id,
-            tx.account,
-            tx.connection,
-            Math.abs(parseFloat(tx.amount)),
-            tx.currency || 'AUD',
-            tx.description || tx.descriptionLong || 'Unknown',
-            tx.direction, // 'credit' or 'debit'
-            tx.status,
-            tx.transactionDate,
-            tx.type || 'transaction',
-            tx.category?.code || tx.category?.title || 'uncategorized',
-            tx.institution || null,
-            tx.merchant?.businessName || null,
-            JSON.stringify(tx),
-          ]
-        );
-
-        // Convert to Budgetier expense or income
-        if (tx.direction === 'debit') {
-          // Expense (money going out)
-          const expenseResult = await query(
-            `INSERT INTO expenses (
-              user_id, amount, category, date, description, 
-              recurring, basiq_transaction_id, source
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING *`,
-            [
-              userId,
-              Math.abs(parseFloat(tx.amount)),
-              this.mapCategory(tx.category),
-              tx.transactionDate,
-              tx.description || 'Bank Transaction',
-              false,
-              tx.id,
-              'basiq',
-            ]
-          );
-
-          imported.push({
-            type: 'expense',
-            id: expenseResult[0].id,
-            amount: Math.abs(parseFloat(tx.amount)),
-            description: tx.description,
-          });
-        } else if (tx.direction === 'credit') {
-          // Income (money coming in)
-          const incomeResult = await query(
-            `INSERT INTO income (
-              user_id, amount, source, date, description,
-              recurring, basiq_transaction_id, source_type
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING *`,
-            [
-              userId,
-              Math.abs(parseFloat(tx.amount)),
-              tx.merchant?.businessName || tx.institution || 'Bank Transfer',
-              tx.transactionDate,
-              tx.description || 'Bank Transaction',
-              false,
-              tx.id,
-              'basiq',
-            ]
-          );
-
-          imported.push({
-            type: 'income',
-            id: incomeResult[0].id,
-            amount: Math.abs(parseFloat(tx.amount)),
-            description: tx.description,
-          });
-        }
-
-        count++;
-      } catch (error) {
-        console.error(`Failed to import transaction ${tx.id}:`, error.message);
-        // Continue with other transactions
-      }
-    }
-
-    return { count, transactions: imported };
-  }
-
-  /**
-   * Map Basiq category to Budgetier category
-   */
-  mapCategory(basiqCategory) {
-    if (!basiqCategory) return 'Uncategorized';
-
-    const categoryMap = {
-      'restaurants': 'Food & Dining',
-      'groceries': 'Food & Dining',
-      'food': 'Food & Dining',
-      'transport': 'Transportation',
-      'fuel': 'Transportation',
-      'taxi': 'Transportation',
-      'rent': 'Housing',
-      'mortgage': 'Housing',
-      'utilities': 'Utilities',
-      'electricity': 'Utilities',
-      'gas': 'Utilities',
-      'water': 'Utilities',
-      'entertainment': 'Entertainment',
-      'shopping': 'Shopping',
-      'clothing': 'Shopping',
-      'health': 'Health',
-      'medical': 'Health',
-      'education': 'Education',
-      'salary': 'Salary',
-      'transfer': 'Transfer',
-      'cash': 'Cash',
-    };
-
-    const code = basiqCategory.code?.toLowerCase() || '';
-    const title = basiqCategory.title?.toLowerCase() || '';
-
-    for (const [key, value] of Object.entries(categoryMap)) {
-      if (code.includes(key) || title.includes(key)) {
-        return value;
-      }
-    }
-
-    return 'Uncategorized';
-  }
-
-  // ============================================
-  // USER CONNECTION STATUS
-  // ============================================
-
-  /**
-   * Get bank connection status for a user
-   */
-  async getConnectionStatus(userId) {
-    const result = await query(
-      `SELECT 
-        basiq_user_id,
-        basiq_connection_id,
-        institution_name,
-        account_name,
-        status,
-        connected_at,
-        last_synced,
-        error_message
-       FROM bank_connections
-       WHERE user_id = $1
-       ORDER BY connected_at DESC
-       LIMIT 1`,
-      [userId]
+    // Store in basiq_transactions
+    await query(
+      `INSERT INTO basiq_transactions 
+       (user_id, basiq_transaction_id, account_id, transaction_date, 
+        description, amount, transaction_type, status, raw_data, imported_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+      [
+        userId,
+        tx.id,
+        tx.account,
+        tx.transactionDate,
+        tx.description,
+        absAmount,
+        isCredit ? 'credit' : 'debit',
+        tx.status,
+        JSON.stringify(tx),
+      ]
     );
 
-    if (result.length === 0) {
-      return {
-        isConnected: false,
-        status: 'not_connected',
-        message: 'No bank connection found',
-      };
+    // Import to expenses or income
+    if (isCredit) {
+      // Income
+      await query(
+        `INSERT INTO income 
+         (user_id, amount, source, date, description, 
+          basiq_transaction_id, source_type, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'basiq', NOW())
+         ON CONFLICT (basiq_transaction_id) DO NOTHING`,
+        [
+          userId,
+          absAmount,
+          'Bank Import',
+          tx.transactionDate,
+          tx.description,
+          tx.id,
+        ]
+      );
+    } else {
+      // Expense
+      await query(
+        `INSERT INTO expenses 
+         (user_id, amount, category, date, description, 
+          basiq_transaction_id, source, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'basiq', NOW())
+         ON CONFLICT (basiq_transaction_id) DO NOTHING`,
+        [
+          userId,
+          absAmount,
+          this.categorizeTransaction(tx.description),
+          tx.transactionDate,
+          tx.description,
+          tx.id,
+        ]
+      );
     }
 
-    const conn = result[0];
-
-    return {
-      isConnected: conn.status === 'connected',
-      status: conn.status,
-      institution: conn.institution_name,
-      accountName: conn.account_name,
-      connectedAt: conn.connected_at,
-      lastSynced: conn.last_synced,
-      errorMessage: conn.error_message,
-    };
+    return tx.id;
   }
 
   /**
-   * Get recently imported transactions for display
+   * Get recent imported transactions
    */
   async getRecentImportedTransactions(userId, limit = 20) {
-    const result = await query(
-      `SELECT 
-        bt.*,
-        CASE 
-          WHEN bt.direction = 'debit' THEN 'expense'
-          WHEN bt.direction = 'credit' THEN 'income'
-          ELSE 'unknown'
-        END as import_type,
-        e.id as expense_id,
-        i.id as income_id
-       FROM basiq_transactions bt
-       LEFT JOIN expenses e ON e.basiq_transaction_id = bt.basiq_transaction_id
-       LEFT JOIN income i ON i.basiq_transaction_id = bt.basiq_transaction_id
-       WHERE bt.user_id = $1
-       ORDER BY bt.transaction_date DESC
-       LIMIT $2`,
-      [userId, limit]
-    );
+    try {
+      const result = await query(
+        `SELECT 
+          bt.basiq_transaction_id,
+          bt.description,
+          bt.amount,
+          bt.transaction_type,
+          bt.transaction_date,
+          bt.imported_at,
+          bc.institution_name
+         FROM basiq_transactions bt
+         LEFT JOIN bank_connections bc ON bt.user_id = bc.user_id
+         WHERE bt.user_id = $1
+         ORDER BY bt.imported_at DESC
+         LIMIT $2`,
+        [userId, limit]
+      );
 
-    return result;
+      return result;
+    } catch (error) {
+      console.error('Get imported transactions error:', error);
+      throw new Error('Failed to fetch imported transactions');
+    }
+  }
+
+  /**
+   * Categorize a transaction based on description
+   */
+  categorizeTransaction(description) {
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('grocery') || desc.includes('supermarket') || desc.includes('woolworths') || desc.includes('coles')) {
+      return 'Food & Groceries';
+    }
+    if (desc.includes('restaurant') || desc.includes('cafe') || desc.includes('food')) {
+      return 'Food & Dining';
+    }
+    if (desc.includes('uber') || desc.includes('taxi') || desc.includes('transport')) {
+      return 'Transport';
+    }
+    if (desc.includes('petrol') || desc.includes('fuel') || desc.includes('gas')) {
+      return 'Fuel';
+    }
+    if (desc.includes('rent') || desc.includes('mortgage')) {
+      return 'Housing';
+    }
+    if (desc.includes('electric') || desc.includes('water') || desc.includes('bill')) {
+      return 'Utilities';
+    }
+    if (desc.includes('netflix') || desc.includes('spotify') || desc.includes('subscription')) {
+      return 'Subscriptions';
+    }
+    if (desc.includes('shopping') || desc.includes('purchase')) {
+      return 'Shopping';
+    }
+    
+    return 'Other';
   }
 }
 
+// Export singleton instance
 module.exports = new BasiqService();
