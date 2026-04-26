@@ -98,7 +98,6 @@ class BasiqService {
   /**
    * Generate USER token for a specific Basiq user
    * User token is used for: auth links, connections, transactions
-   * NOTE: This endpoint uses Basic auth with API key, not Bearer token
    */
   async generateUserToken(basiqUserId) {
     if (!basiqUserId) {
@@ -108,13 +107,16 @@ class BasiqService {
     try {
       console.log(`🔄 Generating USER token for Basiq user: ${basiqUserId?.substring(0, 8)}...`);
       
-      // User token endpoint requires Basic auth with API key
+      // Get server token first
+      const serverToken = await this.getServerToken();
+      
+      // Try using Bearer token (server token) for user token generation
       const response = await axios.post(
         `${this.apiUrl}/users/${basiqUserId}/token`,
         {},
         {
           headers: {
-            'Authorization': `Basic ${this.apiKey}`,
+            'Authorization': `Bearer ${serverToken}`,
             'Content-Type': 'application/json',
             'basiq-version': '3.0',
           },
@@ -128,9 +130,31 @@ class BasiqService {
     } catch (error) {
       console.error('❌ Failed to generate USER token:', error.response?.data || error.message);
       
-      // Check if this is an invalid-token error (likely using wrong token type)
+      // Check if this is an invalid-token error
       if (error.response?.data?.data?.[0]?.code === 'invalid-authorization-token') {
-        console.error('🚨 CRITICAL: Server token rejected for user token generation');
+        console.error('🚨 Server token rejected, trying Basic auth fallback...');
+        
+        // Fallback to Basic auth
+        try {
+          const response = await axios.post(
+            `${this.apiUrl}/users/${basiqUserId}/token`,
+            {},
+            {
+              headers: {
+                'Authorization': `Basic ${this.apiKey}`,
+                'Content-Type': 'application/json',
+                'basiq-version': '3.0',
+              },
+            }
+          );
+          
+          const userToken = response.data.access_token;
+          console.log('✅ USER token generated (Basic auth fallback):', userToken?.substring(0, 10) + '...');
+          return userToken;
+        } catch (fallbackError) {
+          console.error('❌ Basic auth fallback also failed:', fallbackError.response?.data || fallbackError.message);
+          throw new Error('Failed to generate user token with both methods');
+        }
       }
       
       throw new Error('Failed to generate user token');
