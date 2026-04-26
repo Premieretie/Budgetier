@@ -9,6 +9,7 @@
 
 const axios = require('axios');
 const { query, transaction } = require('../config/database');
+const { sendBankConnectEmail, sendBankConnectedEmail } = require('../services/emailService');
 
 // Basiq API configuration
 const BASIQ_API_URL = process.env.BASIQ_API_URL || 'https://au-api.basiq.io';
@@ -341,11 +342,26 @@ class BasiqService {
       const connectLink = `https://consent.basiq.io/home?${params.toString()}`;
       console.log('✅ Connect link created:', connectLink?.substring(0, 60) + '...');
 
+      // Send email with connect link
+      console.log('📧 Sending connect link email to:', email);
+      const emailResult = await sendBankConnectEmail({
+        to: email,
+        name: null, // Can be passed from frontend if available
+        connectLink,
+      });
+
+      if (emailResult.success) {
+        console.log('✅ Connect link email sent successfully');
+      } else {
+        console.warn('⚠️ Failed to send email (continuing):', emailResult.error);
+      }
+
       return {
         success: true,
         connectLink,
         basiqUserId,
         expiresIn: 3600, // Client tokens typically valid for 1 hour
+        emailSent: emailResult.success,
       };
     } catch (error) {
       console.error('❌ Create connect link error:', error.response?.data || error.message);
@@ -458,6 +474,32 @@ class BasiqService {
       );
 
       console.log('✅ Connection saved:', institution?.name);
+
+      // Send confirmation email
+      try {
+        const userEmailResult = await query(
+          'SELECT email FROM users WHERE id = $1',
+          [userId]
+        );
+        
+        if (userEmailResult.length > 0) {
+          const userEmail = userEmailResult[0].email;
+          const emailResult = await sendBankConnectedEmail({
+            to: userEmail,
+            name: null,
+            institutionName: institution?.name,
+            accountName: accounts[0]?.name,
+          });
+          
+          if (emailResult.success) {
+            console.log('✅ Connection confirmation email sent');
+          } else {
+            console.warn('⚠️ Failed to send confirmation email:', emailResult.error);
+          }
+        }
+      } catch (emailError) {
+        console.warn('⚠️ Email error (continuing):', emailError.message);
+      }
 
       return {
         success: true,
