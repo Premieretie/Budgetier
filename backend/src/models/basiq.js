@@ -87,7 +87,7 @@ class BasiqService {
     // Log token length for debugging (never log full token)
     console.log(`🔑 Using Basiq token (length: ${token.length})`);
     return {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': token,  // Basiq tokens are used directly without Bearer prefix
       'Content-Type': 'application/json',
       'basiq-version': '3.0',
     };
@@ -205,7 +205,8 @@ class BasiqService {
           );
           console.log('✅ Updated Basiq user with mobile');
         } catch (mobileError) {
-          console.warn('⚠️ Failed to update mobile (continuing):', mobileError.message);
+          console.warn('⚠️ Failed to update mobile (continuing):', 
+            mobileError.response?.data || mobileError.message);
         }
       }
 
