@@ -98,6 +98,7 @@ class BasiqService {
   /**
    * Generate USER token for a specific Basiq user
    * User token is used for: auth links, connections, transactions
+   * NOTE: This endpoint uses Basic auth with API key, not Bearer token
    */
   async generateUserToken(basiqUserId) {
     if (!basiqUserId) {
@@ -107,12 +108,17 @@ class BasiqService {
     try {
       console.log(`🔄 Generating USER token for Basiq user: ${basiqUserId?.substring(0, 8)}...`);
       
-      const headers = await this.getServerHeaders();
-      
+      // User token endpoint requires Basic auth with API key
       const response = await axios.post(
         `${this.apiUrl}/users/${basiqUserId}/token`,
         {},
-        { headers }
+        {
+          headers: {
+            'Authorization': `Basic ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'basiq-version': '3.0',
+          },
+        }
       );
 
       const userToken = response.data.access_token;
