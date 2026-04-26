@@ -231,13 +231,52 @@ class BasiqService {
     }
   }
 
+  /**
+   * Generate CLIENT token bound to a specific Basiq user
+   * Client token is used for the Consent UI (connect.basiq.io)
+   */
+  async generateClientToken(basiqUserId) {
+    if (!basiqUserId) {
+      throw new Error('basiqUserId is required to generate client token');
+    }
+
+    try {
+      console.log(`🔄 Generating CLIENT token for Basiq user: ${basiqUserId?.substring(0, 8)}...`);
+      
+      // Client token endpoint uses Basic auth with API key
+      const response = await axios.post(
+        `${this.apiUrl}/token`,
+        {},
+        {
+          headers: {
+            'Authorization': `Basic ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'basiq-version': '3.0',
+          },
+          params: {
+            userId: basiqUserId,
+          },
+        }
+      );
+
+      const clientToken = response.data.access_token;
+      console.log('✅ CLIENT token generated:', clientToken?.substring(0, 10) + '...');
+      
+      return clientToken;
+    } catch (error) {
+      console.error('❌ Failed to generate CLIENT token:', error.response?.data || error.message);
+      throw new Error('Failed to generate client token');
+    }
+  }
+
   // ============================================
   // CONNECT LINK CREATION (FIXED)
   // ============================================
 
   /**
    * Create a Basiq Connect link (URL for user to connect their bank)
-   * Uses SERVER token - per Basiq docs, server token has full access to all endpoints
+   * Uses CLIENT token approach per Basiq docs:
+   * https://consent.basiq.io/home?token={{client_token}}&action=connect
    */
   async createConnectLink(userId, email, redirectUrl, mobile) {
     try {
@@ -265,31 +304,27 @@ class BasiqService {
         }
       }
 
-      // Step 3: Create auth link with SERVER token (simplified approach)
-      // Per Basiq docs: "SERVER_ACCESS token can be used for all endpoints"
-      console.log('🔗 Creating auth link with SERVER token...');
-      const serverHeaders = await this.getServerHeaders();
+      // Step 3: Generate CLIENT token (bound to user) for consent UI
+      console.log('� Generating CLIENT token for consent UI...');
+      const clientToken = await this.generateClientToken(basiqUserId);
       
-      const payload = {
-        mobile: mobile,
-        scope: 'server.scope',
-        redirect: redirectUrl,
-      };
-
-      const response = await axios.post(
-        `${this.apiUrl}/users/${basiqUserId}/auth_link`,
-        payload,
-        { headers: serverHeaders }
-      );
-
-      const connectLink = response.data.links.self;
-      console.log('✅ Connect link created:', connectLink?.substring(0, 50) + '...');
+      // Step 4: Build consent.basiq.io URL with action=connect
+      // Per Basiq docs: This opens the Connect flow directly
+      const params = new URLSearchParams();
+      params.append('token', clientToken);
+      params.append('action', 'connect');
+      if (redirectUrl) {
+        params.append('redirect_uri', redirectUrl);
+      }
+      
+      const connectLink = `https://consent.basiq.io/home?${params.toString()}`;
+      console.log('✅ Connect link created:', connectLink?.substring(0, 60) + '...');
 
       return {
         success: true,
         connectLink,
         basiqUserId,
-        expiresIn: response.data.expiry,
+        expiresIn: 3600, // Client tokens typically valid for 1 hour
       };
     } catch (error) {
       console.error('❌ Create connect link error:', error.response?.data || error.message);
