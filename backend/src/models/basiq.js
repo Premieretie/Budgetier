@@ -179,6 +179,7 @@ class BasiqService {
 
   /**
    * Get or create Basiq user for a Budgetier user
+   * If user was deleted in Basiq dashboard, creates a new one
    */
   async getOrCreateBasiqUser(userId, email, mobile = null) {
     try {
@@ -189,11 +190,31 @@ class BasiqService {
       );
 
       if (existing.length > 0 && existing[0].basiq_user_id) {
-        console.log(`✅ Found existing Basiq user: ${existing[0].basiq_user_id?.substring(0, 8)}...`);
-        return { 
-          basiqUserId: existing[0].basiq_user_id, 
-          isNew: false 
-        };
+        const existingBasiqId = existing[0].basiq_user_id;
+        console.log(`🔍 Found existing Basiq user ID in DB: ${existingBasiqId?.substring(0, 8)}...`);
+        
+        // Verify the user still exists in Basiq
+        try {
+          const headers = await this.getServerHeaders();
+          const response = await axios.get(
+            `${this.apiUrl}/users/${existingBasiqId}`,
+            { headers }
+          );
+          
+          // User exists, return it
+          console.log(`✅ Verified Basiq user exists: ${response.data.id?.substring(0, 8)}...`);
+          return { 
+            basiqUserId: existingBasiqId, 
+            isNew: false 
+          };
+        } catch (verifyError) {
+          if (verifyError.response?.status === 404) {
+            console.log('⚠️ Basiq user not found (was deleted), creating new user...');
+            // Continue to create new user below
+          } else {
+            throw verifyError;
+          }
+        }
       }
 
       // Create new Basiq user
