@@ -57,13 +57,15 @@ class BasiqService {
     try {
       console.log('🔄 Obtaining new SERVER token...');
       
+      // Per Basiq docs: form-encoded body with scope=SERVER_ACCESS
+      const qs = require('querystring');
       const response = await axios.post(
         `${this.apiUrl}/token`,
-        {},
+        qs.stringify({ scope: 'SERVER_ACCESS' }),
         {
           headers: {
             'Authorization': `Basic ${this.apiKey}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
             'basiq-version': '3.0',
           },
         }
@@ -265,18 +267,22 @@ class BasiqService {
     try {
       console.log(`🔄 Generating CLIENT token for Basiq user: ${basiqUserId?.substring(0, 8)}...`);
       
-      // Client token endpoint uses Basic auth with API key
+      // Per Basiq docs: CLIENT_ACCESS token requires form-encoded body
+      // POST /token with scope=CLIENT_ACCESS&userId=xxx
+      const qs = require('querystring');
+      const body = qs.stringify({
+        scope: 'CLIENT_ACCESS',
+        userId: basiqUserId,
+      });
+
       const response = await axios.post(
         `${this.apiUrl}/token`,
-        {},
+        body,
         {
           headers: {
             'Authorization': `Basic ${this.apiKey}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
             'basiq-version': '3.0',
-          },
-          params: {
-            userId: basiqUserId,
           },
         }
       );
